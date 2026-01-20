@@ -1,0 +1,14 @@
+.env
+.env.local
+.DS_Store
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.turbo/
+.cache/
+*.log
+tsconfig.tsbuildinfo
+__pycache__/
+.venv/

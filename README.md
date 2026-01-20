@@ -1,7 +1,8 @@
 <div align="center">
-  <img src="https://docs.slng.ai/logo.svg" alt="SLNG" width="120" />
+  <a href="https://codespaces.new/slng-ai/examples">
+    <img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" />
+  </a>
   <h1>SLNG Examples</h1>
-  <p>Landing page for the SLNG examples repo.</p>
 </div>
 
 ## What is SLNG?
@@ -32,7 +33,7 @@ Replace the URL with your fork if needed.
 ## Open in GitHub Codespaces
 Open this repo directly in Codespaces:
 
-https://github.com/codespaces/new?repo=slng-ai/examples
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/slng-ai/examples)
 
 ## Developer resources
 - Docs: https://docs.slng.ai
