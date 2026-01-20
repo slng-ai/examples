@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SLNG TTS Next Demo
+
+![SLNG TTS Demo](public/demo.gif)
+
+[![Test it live](https://img.shields.io/badge/Test%20it%20live-Launch%20demo-0a0a0a?style=for-the-badge)](https://example-tts-aura.vercel.app/)
+
+A simple Next.js app that calls the SLNG Text-to-Speech API and plays the audio response. Just type a text and get the corresponding audio, perfect to test the API, and get request payload and cURL command used.
+
+## Prerequisites
+
+- Node.js 18+ (recommended)
+- npm, yarn, pnpm, or bun
+- An SLNG API key [get one](https://app.slng.ai)
 
 ## Getting Started
 
-First, run the development server:
+Clone only this example using sparse checkout:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone --filter=blob:none --no-checkout https://github.com/slng-ai/examples slng-examples
+cd slng-examples
+
+git sparse-checkout init --cone
+git sparse-checkout set slng-tts-next
+
+git checkout main
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Install and run:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open http://localhost:3000 to use the demo.
 
-## Learn More
+## Models Supported
 
-To learn more about Next.js, take a look at the following resources:
+The UI currently ships with these presets (you can also type any model id):
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `slng/deepgram/aura:2` (default)
+- `slng/deepgram/aura:2-es`
+- `deepgram/aura:2`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API Call (What the App Sends)
 
-## Deploy on Vercel
+The app calls:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+POST https://api.slng.ai/v1/tts/{model}
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Example cURL:
+
+```bash
+curl "https://api.slng.ai/v1/tts/slng/deepgram/aura:2" \
+  -H "Authorization: Bearer $SLNG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "aura-2-thalia-en",
+    "text": "Hello my friend, this is just a test."
+  }' \
+  -o output_audio.wav
+```
+
+Notes:
+- The `model` field in the JSON payload is used for the voice id (for example, `aura-2-thalia-en`).
+- The app expects standard audio binary responses (not `text/event-stream`).
+
+See full [API Reference](https://docs.slng.ai/api/tts/aura-2-slng) for more details.
+
+## Read More About SLNG Models
+
+- Model docs: https://docs.slng.ai
+
+## Contributing
+
+Have an idea for an improvement? Please open an issue or a PR in the main examples repo:
+- https://github.com/slng-ai/examples/issues
+
+---
+
+<div align="center">
+  <img src="https://docs.slng.ai/images/logo.svg" alt="SLNG" width="120" />
+</div>
