@@ -1,7 +1,5 @@
 <div align="center">
-  <a href="https://codespaces.new/slng-ai/examples">
-    <img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" />
-  </a>
+  <img src="https://docs.slng.ai/images/logo.svg" alt="SLNG" width="120" />
   <h1>SLNG Examples</h1>
 </div>
 
