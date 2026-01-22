@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SLNG Nova STT WebSocket Demo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #fbfaf7;
+      --foreground: #15120d;
+      --card: #ffffff;
+      --card-foreground: #15120d;
+      --popover: #ffffff;
+      --popover-foreground: #15120d;
+      --primary: #15120d;
+      --primary-foreground: #ffffff;
+      --secondary: #f3f2ed;
+      --secondary-foreground: #15120d;
+      --muted-foreground: #8a8983;
+      --accent: #fbe566;
+      --accent-foreground: #15120d;
+      --destructive: #ef4444;
+      --border: #cac9c4;
+      --input: #cac9c4;
+      --ring: #fbe566;
+      --radius: 0.5rem;
+      --font-body: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+        sans-serif;
+      --shadow-soft: 0 24px 50px rgba(21, 18, 13, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 36px 18px 28px;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-image: radial-gradient(circle at 20% 10%,
+          color-mix(in srgb, var(--accent) 40%, transparent),
+          transparent 65%),
+        radial-gradient(circle at 80% 0%,
+          color-mix(in srgb, var(--secondary) 60%, transparent),
+          transparent 55%);
+    }
+
+    .page {
+      max-width: 920px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    .page-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      display: block;
+      box-shadow: inset 0 0 0 1px
+        color-mix(in srgb, var(--foreground) 20%, transparent);
+    }
+
+    .brand-title {
+      font-size: 1.35rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .brand-subtitle {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted-foreground);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: var(--card);
+      color: var(--card-foreground);
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) * 2);
+      padding: 24px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted-foreground);
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin: 12px 0 8px;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .row.compact {
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    .compact-field {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .compact-field label {
+      margin: 0;
+    }
+
+    .compact-field select,
+    .compact-field input[type="file"] {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .icon-button {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      font-size: 1.1rem;
+    }
+
+    .inline-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .inline-label a {
+      font-size: 0.85rem;
+      color: var(--foreground);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .inline-label a:hover {
+      text-decoration: underline;
+    }
+
+    .page-footer {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      font-size: 0.85rem;
+      color: var(--muted-foreground);
+      padding: 12px 4px 0;
+      border-top: 1px solid
+        color-mix(in srgb, var(--border) 70%, transparent);
+      text-align: center;
+    }
+
+    .footer-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .footer-link {
+      color: var(--foreground);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .footer-link:hover {
+      text-decoration: underline;
+    }
+
+    .h100-saans-bold {
+      --tw-leading: 110%;
+      --tw-font-weight: 790;
+      font-family: var(--font-body);
+      font-size: 42px;
+      font-weight: 790;
+      line-height: 110%;
+    }
+
+    @media (min-width: 768px) {
+      .h100-saans-bold {
+        font-size: 62px;
+      }
+    }
+
+    .row > * {
+      flex: 1 1 240px;
+    }
+
+    input[type="password"],
+    input[type="text"],
+    input[type="file"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--input);
+      font-size: 0.98rem;
+      background: var(--popover);
+      color: var(--popover-foreground);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    button {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      border: none;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(21, 18, 13, 0.2);
+    }
+
+    button.secondary {
+      background: var(--secondary);
+      color: var(--secondary-foreground);
+      border: 1px solid var(--border);
+      box-shadow: none;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 0.95rem;
+      color: var(--muted-foreground);
+    }
+
+    .status.error {
+      color: var(--destructive);
+    }
+
+    .log {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: var(--radius);
+      border: 1px dashed var(--border);
+      background: var(--secondary);
+      font-size: 0.85rem;
+      color: var(--muted-foreground);
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .transcript {
+      padding: 14px;
+      border-radius: calc(var(--radius) * 1.5);
+      background: var(--secondary);
+      border: 1px solid var(--border);
+    }
+
+    .transcript .interim {
+      color: var(--muted-foreground);
+      font-style: italic;
+      min-height: 0;
+    }
+
+    .transcript .final {
+      margin-top: 0;
+      white-space: pre-wrap;
+      min-height: 48px;
+    }
+
+    details {
+      margin-top: 18px;
+      border-top: 1px dashed var(--border);
+      padding-top: 14px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted-foreground);
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::before {
+      content: "";
+      width: 0;
+      height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 7px solid var(--muted-foreground);
+      transform: rotate(-90deg);
+      transition: transform 0.2s ease;
+    }
+
+    details[open] summary::before {
+      transform: rotate(0deg);
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible {
+      outline: 2px solid var(--ring);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <header class="page-header">
+      <div class="brand">
+        <img class="logo" src="https://www.datocms-assets.com/182222/1763142110-logo.svg" alt="SLNG" />
+        <div>
+          <h1 class="brand-title">SLNG Nova STT</h1>
+          <span class="brand-subtitle">WebSocket Demo</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="card stack">
+      <p class="card-title">Session</p>
+      <div class="inline-label">
+        <label for="apiKeyInput">API key</label>
+        <a
+          href="https://slng.ai?utm_source=slng-demo&utm_medium=example&utm_campaign=stt"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Get an API key
+        </a>
+      </div>
+      <input id="apiKeyInput" type="password" placeholder="Paste your SLNG API key" autocomplete="off" />
+      <div class="row">
+        <button id="connectBtn" class="secondary">Connect</button>
+        <button id="startBtn" disabled>Start recording</button>
+        <button id="stopBtn" class="secondary" disabled>Stop</button>
+      </div>
+    </div>
+
+      <div class="card stack">
+        <p class="card-title">Input source</p>
+        <div class="row compact">
+          <div class="compact-field">
+            <label for="audioSourceSelect">Input source</label>
+            <select id="audioSourceSelect">
+              <option value="microphone">🎙️ Microphone</option>
+              <option value="file">📼 Audio file</option>
+            </select>
+          </div>
+          <div class="compact-field" id="fileGroup" hidden>
+            <label for="audioFileInput">Audio file</label>
+            <input
+              id="audioFileInput"
+              type="file"
+              accept="audio/wav,audio/*"
+            />
+          </div>
+          <div class="compact-field" id="deviceGroup">
+            <label for="inputDeviceSelect">Input device</label>
+            <select id="inputDeviceSelect">
+              <option value="">Default microphone</option>
+            </select>
+            <button
+              id="refreshDevicesBtn"
+              class="secondary icon-button"
+              type="button"
+              aria-label="Refresh devices"
+              title="Refresh devices"
+            >
+              🔄
+            </button>
+          </div>
+        </div>
+      </div>
+
+    <div class="card stack">
+      <p class="card-title">Transcript</p>
+      <div class="transcript">
+        <div id="interimTranscript" class="interim"></div>
+        <div id="finalTranscript" class="final"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <details>
+        <summary>Advanced settings</summary>
+        <label for="wsUrlInput">WebSocket URL</label>
+        <input id="wsUrlInput" type="text" value="wss://api.slng.ai/v1/stt/slng/deepgram/nova:3-en" />
+
+        <div class="row">
+          <div style="flex: 1 1 240px;">
+            <label for="proxyUrlInput">Proxy WebSocket URL</label>
+            <input id="proxyUrlInput" type="text" value="ws://localhost:8787" />
+          </div>
+          <div style="flex: 0 0 180px; align-self: flex-end;">
+            <label style="display: flex; align-items: center; gap: 8px;">
+              <input id="proxyMode" type="checkbox" checked />
+              Use proxy
+            </label>
+          </div>
+        </div>
+
+        <div class="row">
+          <div style="flex: 1 1 200px;">
+            <label for="sampleRateInput">Sample rate (PCM)</label>
+            <input id="sampleRateInput" type="text" value="16000" inputmode="numeric" />
+          </div>
+          <div style="flex: 1 1 200px;">
+            <label for="channelsInput">Channels</label>
+            <input id="channelsInput" type="text" value="1" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div style="flex: 0 0 180px; align-self: flex-end;">
+            <label style="display: flex; align-items: center; gap: 8px;">
+              <input id="customInitMode" type="checkbox" />
+              Use custom init
+            </label>
+          </div>
+        </div>
+
+        <label for="customInitPayload">Custom init JSON</label>
+        <textarea id="customInitPayload" rows="4" spellcheck="false">{
+  "type": "init",
+  "config": {
+    "encoding": "linear16",
+    "sample_rate": 16000,
+    "channels": 1
+  }
+}</textarea>
+
+        <div class="row">
+          <div style="flex: 0 0 200px; align-self: flex-end;">
+            <label style="display: flex; align-items: center; gap: 8px;">
+              <input id="customStopMode" type="checkbox" />
+              Use custom stop
+            </label>
+          </div>
+        </div>
+
+        <label for="customStopPayload">Custom stop JSON</label>
+        <textarea id="customStopPayload" rows="3" spellcheck="false">{
+  "type": "stop"
+}</textarea>
+      </details>
+
+      <details>
+        <summary>Diagnostics</summary>
+        <div id="status" class="status"></div>
+        <div id="log" class="log"></div>
+      </details>
+    </div>
+
+    <footer class="page-footer">
+      <div class="footer-stack">
+        <p class="h100-saans-bold">Unmuted.</p>
+        <img
+          alt="Logo"
+          loading="lazy"
+          width="149"
+          height="49"
+          src="https://www.datocms-assets.com/182222/1763142213-logo-lg.svg"
+        />
+      </div>
+      <a
+        class="footer-link"
+        href="https://slng.ai?utm_source=slng-demo&utm_medium=example&utm_campaign=tts"
+      >
+        Create your API Key
+      </a>
+    </footer>
+  </div>
+
+    <script src="app.js?v=1"></script>
+</body>
+
+</html>

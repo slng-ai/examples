@@ -1,0 +1,16 @@
+{
+  "name": "slng-nova-stt-websocket-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local WebSocket proxy for SLNG Nova STT demo",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "proxy": "node proxy.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "hono": "^4.6.12",
+    "ws": "^8.18.0"
+  }
+}
