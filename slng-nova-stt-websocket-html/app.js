@@ -22,6 +22,8 @@ const logEl = document.getElementById("log");
 const interimTranscriptEl = document.getElementById("interimTranscript");
 const finalTranscriptEl = document.getElementById("finalTranscript");
 
+const LOCAL_PROXY_URL = "ws://localhost:8787";
+
 let socket = null;
 let isConnected = false;
 let isRecording = false;
@@ -40,6 +42,22 @@ let fileStreamSampleRate = 16000;
 let finalTranscriptText = "";
 let latestInterimText = "";
 let pendingAutoStart = null;
+
+function getDefaultProxyUrl() {
+  if (!window.location.host) {
+    return LOCAL_PROXY_URL;
+  }
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${protocol}://${window.location.host}`;
+}
+
+function setDefaultProxyUrl() {
+  if (!proxyUrlInput.value || proxyUrlInput.value === LOCAL_PROXY_URL) {
+    proxyUrlInput.value = getDefaultProxyUrl();
+  }
+}
+
+setDefaultProxyUrl();
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
