@@ -29,7 +29,7 @@ const promptSuggestions = [
 ];
 
 const modelOptions = [
-  { value: "slng/deepgram/aura:2", label: "slng/deepgram/aura:2 (default)" },
+  { value: "slng/deepgram/aura:2-en", label: "slng/deepgram/aura:2-en (default)" },
   { value: "slng/deepgram/aura:2-es", label: "slng/deepgram/aura:2-es" },
   { value: "deepgram/aura:2", label: "deepgram/aura:2" },
 ];
@@ -38,7 +38,7 @@ export default function Home() {
   const [text, setText] = useState("Hello my friend, this is just a test.");
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("https://api.slng.ai");
-  const [model, setModel] = useState("slng/deepgram/aura:2");
+  const [model, setModel] = useState("slng/deepgram/aura:2-en");
   const [voice, setVoice] = useState("aura-2-thalia-en");
   const [language, setLanguage] = useState("");
   const [status, setStatus] = useState("");

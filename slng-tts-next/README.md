@@ -39,7 +39,7 @@ Open http://localhost:3000 to use the demo.
 
 The UI currently ships with these presets (you can also type any model id):
 
-- `slng/deepgram/aura:2` (default)
+- `slng/deepgram/aura:2-en` (default)
 - `slng/deepgram/aura:2-es`
 - `deepgram/aura:2`
 
@@ -54,7 +54,7 @@ POST https://api.slng.ai/v1/tts/{model}
 Example cURL:
 
 ```bash
-curl "https://api.slng.ai/v1/tts/slng/deepgram/aura:2" \
+curl "https://api.slng.ai/v1/tts/slng/deepgram/aura:2-en" \
   -H "Authorization: Bearer $SLNG_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
