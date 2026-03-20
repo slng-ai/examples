@@ -312,13 +312,27 @@ export default function Home() {
           config: { sample_rate: parsedSampleRate, encoding: audioFormat },
         });
 
-    connect({
-      wsUrl: wsUrl.trim(),
-      apiKey: apiKey.trim(),
-      useProxy,
-      proxyUrl: proxyUrl.trim(),
-      initMessage,
-    });
+    const doConnect = () => {
+      connect({
+        wsUrl: wsUrl.trim(),
+        apiKey: apiKey.trim(),
+        useProxy,
+        proxyUrl: proxyUrl.trim(),
+        initMessage,
+      });
+    };
+
+    // Wake up the proxy if it's on a cold-start platform (e.g. Render free tier)
+    if (useProxy && proxyUrl.trim()) {
+      const httpUrl = proxyUrl.trim().replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
+      setStatusMessage("Waking up proxy...");
+      appendLog(`Pinging proxy at ${httpUrl}`);
+      fetch(httpUrl, { mode: "no-cors" }).catch(() => {});
+      // Give the proxy a moment to spin up, then connect
+      setTimeout(doConnect, 2000);
+    } else {
+      doConnect();
+    }
   }, [
     isConnected,
     disconnect,
@@ -338,6 +352,7 @@ export default function Home() {
     audioFormat,
     connect,
     setStatusMessage,
+    appendLog,
   ]);
 
   // ── Send WS payload ──
