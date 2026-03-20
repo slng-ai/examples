@@ -293,15 +293,105 @@ select:focus-visible {
   text-decoration: underline;
 }
 
-audio {
-  width: 100%;
+/* ── Mode toggle ── */
+.mode-toggle {
+  display: inline-flex;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: 20px;
+}
+
+.mode-toggle button {
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--muted-foreground);
+  box-shadow: none;
+  transition: all 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.mode-toggle button.active {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 3px rgba(21, 18, 13, 0.1);
+}
+
+/* ── Model row ── */
+.model-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.model-row .field {
+  flex: 1 1 280px;
+}
+
+.model-link {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--foreground);
+  text-decoration: none;
+  margin-left: 8px;
+  opacity: 0.6;
+}
+
+.model-link:hover {
+  text-decoration: underline;
+  opacity: 1;
+}
+
+/* ── Connect row ── */
+.connect-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.connect-row .api-field {
+  flex: 1 1 280px;
+}
+
+.connect-row .btn-group {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-bottom: 1px;
+}
+
+/* ── Secondary button ── */
+button.secondary {
+  background: var(--secondary);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+/* ── Audio wrap ── */
+.audio-wrap {
   margin-top: 16px;
   padding: 8px 12px;
   border-radius: 999px;
   background: var(--secondary);
-  color: var(--secondary-foreground);
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   box-shadow: 0 12px 24px rgba(21, 18, 13, 0.12);
+}
+
+.audio-wrap audio {
+  width: 100%;
+  display: block;
   accent-color: var(--accent);
 }
 
@@ -309,14 +399,178 @@ audio::-webkit-media-controls-panel {
   background: transparent;
 }
 
-.status {
-  margin-top: 12px;
-  font-size: 0.95rem;
+/* ── Waveform ── */
+.waveform-wrap {
+  margin-top: 16px;
+  border-radius: calc(var(--radius) * 2);
+  background: var(--secondary);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 12px 24px rgba(21, 18, 13, 0.12);
+  overflow: hidden;
+}
+
+.waveform-wrap canvas {
+  width: 100%;
+  height: 80px;
+  display: block;
+}
+
+/* ── Status bar ── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: var(--secondary);
+  font-size: 0.85rem;
   color: var(--muted-foreground);
 }
 
-.status.error {
-  color: var(--destructive);
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.status-bar.connected .status-dot {
+  background: var(--accent);
+}
+
+.status-bar.ready .status-dot {
+  background: var(--accent);
+  animation: pulse 1.8s ease-out infinite;
+}
+
+.status-bar.error .status-dot {
+  background: #ef4444;
+}
+
+.status-bar.error {
+  color: #ef4444;
+  background: #fef1f0;
+}
+
+/* ── Log console ── */
+.log-section {
+  margin-top: 12px;
+}
+
+.log-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 4px 0;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.log-toggle:hover {
+  color: var(--foreground);
+}
+
+.log-toggle:disabled {
+  background: none;
+}
+
+.log-toggle .arrow {
+  transition: transform 0.15s;
+  font-size: 0.7rem;
+}
+
+.log-toggle.open .arrow {
+  transform: rotate(90deg);
+}
+
+.log {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  font-size: 0.78rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: var(--muted-foreground);
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  display: none;
+}
+
+.log.open {
+  display: block;
+}
+
+/* ── Code samples ── */
+.code-samples {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+@media (min-width: 768px) {
+  .code-samples {
+    grid-template-columns: 1fr 1fr;
+  }
+  .code-card.wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.code-card {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  overflow: hidden;
+}
+
+.code-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.code-card h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+.copy-btn {
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+  box-shadow: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.copy-btn:hover {
+  color: var(--foreground);
+  border-color: var(--foreground);
+}
+
+/* ── Hidden utility ── */
+.hidden {
+  display: none !important;
 }
 
 details {
