@@ -62,7 +62,9 @@ export default function Home() {
 
   // ── WebSocket settings ──
   const [wsUrl, setWsUrl] = useState(BRIDGES_BASE_URL + DEFAULT_MODEL);
-  const [proxyUrl, setProxyUrl] = useState("ws://localhost:8787");
+  const [proxyUrl, setProxyUrl] = useState(
+    process.env.NEXT_PUBLIC_WS_PROXY_URL || "ws://localhost:8787"
+  );
   const [useProxy, setUseProxy] = useState(true);
   const [audioFormat, setAudioFormat] = useState<AudioFormat>("linear16");
   const [sampleRate, setSampleRate] = useState("24000");

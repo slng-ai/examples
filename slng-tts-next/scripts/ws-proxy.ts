@@ -105,6 +105,8 @@ wss.on("connection", (client) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`WebSocket proxy listening on ws://localhost:${PORT}`);
+const HOST = process.env.HOST || "0.0.0.0";
+
+server.listen(PORT, HOST, () => {
+  console.log(`WebSocket proxy listening on ws://${HOST}:${PORT}`);
 });

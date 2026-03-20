@@ -1,0 +1,24 @@
+services:
+  # Next.js frontend
+  - type: web
+    name: slng-tts-demo
+    runtime: node
+    rootDir: slng-tts-next
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_WS_PROXY_URL
+        sync: false # set manually to wss://<proxy-service>.onrender.com
+
+  # WebSocket proxy
+  - type: web
+    name: slng-tts-proxy
+    runtime: node
+    rootDir: slng-tts-next
+    buildCommand: npm install
+    startCommand: npx tsx scripts/ws-proxy.ts
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
