@@ -2,15 +2,15 @@
 
 ![SLNG TTS Demo](public/demo.gif)
 
-[![Test it live](https://img.shields.io/badge/Test%20it%20live-Launch%20demo-0a0a0a?style=for-the-badge)](https://example-tts-aura.vercel.app/)
+[![Test it live](https://img.shields.io/badge/Test%20it%20live-Launch%20demo-0a0a0a?style=for-the-badge)](https://examples-gbcy.onrender.com/)
 
-A simple Next.js app that calls the SLNG Text-to-Speech API and plays the audio response. Just type a text and get the corresponding audio, perfect to test the API, and get request payload and cURL command used.
+A Next.js app that demonstrates the SLNG Text-to-Speech API with both **REST** and **WebSocket streaming** modes. Type text, pick a model and voice, and hear it instantly — with real-time waveform visualization for WebSocket streaming.
 
 ## Prerequisites
 
 - Node.js 18+ (recommended)
 - npm, yarn, pnpm, or bun
-- An SLNG API key [get one](https://app.slng.ai)
+- An SLNG API key — [get one](https://app.slng.ai)
 
 ## Getting Started
 
@@ -29,50 +29,68 @@ git checkout main
 Install and run:
 
 ```bash
+cd slng-tts-next
 npm install
 npm run dev
 ```
 
 Open http://localhost:3000 to use the demo.
 
-## Models Supported
+### WebSocket Mode (optional)
 
-The UI currently ships with these presets (you can also type any model id):
-
-- `slng/deepgram/aura:2-en` (default)
-- `slng/deepgram/aura:2-es`
-- `deepgram/aura:2`
-
-## API Call (What the App Sends)
-
-The app calls:
-
-```
-POST https://api.slng.ai/v1/tts/{model}
-```
-
-Example cURL:
+WebSocket streaming requires a proxy because browsers cannot set `Authorization` headers on WebSocket connections. To use WebSocket mode locally, start the proxy in a separate terminal:
 
 ```bash
-curl "https://api.slng.ai/v1/tts/slng/deepgram/aura:2-en" \
-  -H "Authorization: Bearer $SLNG_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "aura-2-thalia-en",
-    "text": "Hello my friend, this is just a test."
-  }' \
-  -o output_audio.wav
+npm run proxy
 ```
 
-Notes:
-- The `model` field in the JSON payload is used for the voice id (for example, `aura-2-thalia-en`).
-- The app expects standard audio binary responses (not `text/event-stream`).
+This starts a WebSocket proxy on `ws://localhost:8787`. The proxy forwards connections to the SLNG API with your API key attached as an auth header.
+
+> **Hosted demo**: The live demo at [examples-gbcy.onrender.com](https://examples-gbcy.onrender.com/) uses a proxy hosted at [tts-next-proxy.onrender.com](https://tts-next-proxy.onrender.com). On Render's free tier, the proxy may take ~30 seconds to wake up on first use — the app handles this automatically.
+
+## Models Supported
+
+The UI ships with presets for multiple providers:
+
+| Provider | Models |
+|----------|--------|
+| **Deepgram** | `deepgram/aura:2` |
+| **ElevenLabs** | `elevenlabs/eleven:3`, `eleven-flash:2`, `eleven-flash:2.5`, `eleven-multilingual:2` |
+| **Sarvam** | `sarvam/bulbul:v3` |
+| **SLNG / Deepgram** | `slng/deepgram/aura:2`, `aura:2-en`, `aura:2-es` |
+| **SLNG / Rime** | `slng/rime/arcana:3-en`, `:3-es`, `:3-fr`, `:3-hi`, `:ar`, `:de`, `:en`, `:es`, `:fr` |
+| **Canopy Labs** | `slng/canopylabs/orpheus:en` |
+
+## API Endpoints
+
+### REST
+
+```
+POST https://api.slng.ai/v1/bridges/unmute/tts/{model}
+```
+
+```bash
+curl "https://api.slng.ai/v1/bridges/unmute/tts/slng/deepgram/aura:2" \
+  -H "Authorization: Bearer $SLNG_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "aura-2-thalia-en", "text": "Hello world"}' \
+  -o speech.wav
+```
+
+### WebSocket
+
+```
+wss://api.slng.ai/v1/bridges/unmute/tts/{model}
+```
+
+Connect, send an `init` message with model/voice/config, wait for `ready`, then send `text` + `flush` messages. Audio arrives as binary PCM chunks.
 
 See full [API Reference](https://docs.slng.ai/api/tts/aura-2-slng) for more details.
 
-## Read More About SLNG Models
+## Read More
 
 - Model docs: https://docs.slng.ai
+- Voices: [Deepgram Aura](https://docs.slng.ai/voices/deepgram-aura) · [Rime Arcana](https://docs.slng.ai/voices/rime-arcana)
 
 ## Contributing
 
