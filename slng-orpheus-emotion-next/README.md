@@ -6,7 +6,7 @@ A Next.js demo showcasing emotion-controlled text-to-speech using the SLNG Orphe
 
 ## Features
 
-- **5 Emotions**: Neutral, Happy, Sad, Angry, Surprised
+- **6 Emotions**: Auto (from text), Neutral, Happy, Sad, Angry, Surprised
 - **8 Voices**: Tara, Leah, Jess, Leo, Dan, Mia, Zac, Zoe
 - **Emotive Tags**: Add laughs, sighs, gasps, and more with special tags
 - **Speed Control**: Adjust speech rate from 0.5x to 2.0x
@@ -41,14 +41,17 @@ curl "https://api.slng.ai/v1/tts/slng/canopylabs/orpheus:en" \
   -d '{
     "prompt": "I am so excited to meet you!",
     "voice": "tara",
-    "emotion": "happy"
-  }'
+    "emotion": "happy",
+    "speed": 1.0
+  }' \
+  -o output_audio.wav
 ```
 
 ### Available Emotions
 
 | Emotion | Description |
 |---------|-------------|
+| _(omit)_ | Auto — model infers emotion from text content |
 | `neutral` | Calm, balanced tone |
 | `happy` | Upbeat, cheerful expression |
 | `sad` | Melancholic, subdued tone |
@@ -69,6 +72,12 @@ Add special sounds to your text with these tags:
 - `<sniffle>` - Sniffling
 
 Example: `"That's hilarious! <laugh> I can't believe you said that."`
+
+### API Response
+
+The API returns raw PCM audio (`audio/pcm`, 24kHz, mono, 16-bit). Browsers cannot play raw PCM directly — the demo wraps it in a WAV header automatically.
+
+You can also request SSE streaming by adding `Accept: text/event-stream` to your request headers. The API will stream status updates as JSON events before delivering the audio.
 
 ## Tech Stack
 

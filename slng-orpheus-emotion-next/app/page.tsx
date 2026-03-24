@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 type TtsPayload = {
   prompt: string;
@@ -10,11 +10,12 @@ type TtsPayload = {
 };
 
 const emotions = [
-  { value: "neutral", label: "Neutral", emoji: "" },
-  { value: "happy", label: "Happy", emoji: "" },
-  { value: "sad", label: "Sad", emoji: "" },
-  { value: "angry", label: "Angry", emoji: "" },
-  { value: "surprised", label: "Surprised", emoji: "" },
+  { value: "", label: "Auto (from text)", emoji: "✨" },
+  { value: "neutral", label: "Neutral", emoji: "😐" },
+  { value: "happy", label: "Happy", emoji: "😊" },
+  { value: "sad", label: "Sad", emoji: "😢" },
+  { value: "angry", label: "Angry", emoji: "😠" },
+  { value: "surprised", label: "Surprised", emoji: "😲" },
 ];
 
 const voices = [
@@ -66,100 +67,24 @@ export default function Home() {
   const [text, setText] = useState("Hello! I'm so excited to meet you. This is going to be amazing!");
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("https://api.slng.ai");
-  const [emotion, setEmotion] = useState("happy");
+  const [emotion, setEmotion] = useState("");
   const [voice, setVoice] = useState("tara");
   const [speed, setSpeed] = useState("1.0");
   const [status, setStatus] = useState("");
   const [statusIsError, setStatusIsError] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
-  const currentAudioUrlRef = useRef<string | null>(null);
-
-  const normalizedBaseUrl = useMemo(() => {
-    const value = baseUrl.trim();
-    return value ? value.replace(/\/+$/, "") : "";
-  }, [baseUrl]);
-
-  const payload = useMemo<TtsPayload>(() => {
-    const trimmedText = text.trim();
-    const payloadData: TtsPayload = {
-      prompt: trimmedText,
-    };
-
-    if (voice.trim()) {
-      payloadData.voice = voice.trim();
-    }
-    if (emotion.trim()) {
-      payloadData.emotion = emotion.trim();
-    }
-    const speedValue = parseFloat(speed);
-    if (!isNaN(speedValue) && speedValue !== 1.0) {
-      payloadData.speed = speedValue;
-    }
-
-    return payloadData;
-  }, [text, voice, emotion, speed]);
-
-  const inspectEndpoint = useMemo(() => {
-    const inspectBase = normalizedBaseUrl || "https://api.slng.ai";
-    return `${inspectBase}/v1/tts/slng/canopylabs/orpheus:en`;
-  }, [normalizedBaseUrl]);
-
-  const curlPreview = useMemo(() => {
-    return `curl "${inspectEndpoint}" \\\n  -H "Authorization: Bearer $SLNG_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(payload)}' \\\n  -o output_audio.wav`;
-  }, [inspectEndpoint, payload]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) {
-      return;
-    }
-
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnd = () => setIsPlaying(false);
-
-    audio.addEventListener("play", handlePlay);
-    audio.addEventListener("pause", handlePause);
-    audio.addEventListener("ended", handleEnd);
-
-    return () => {
-      audio.removeEventListener("play", handlePlay);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("ended", handleEnd);
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (currentAudioUrlRef.current) {
-        URL.revokeObjectURL(currentAudioUrlRef.current);
-      }
-    };
-  }, []);
 
   const setStatusMessage = (message: string, isError = false) => {
     setStatus(message);
     setStatusIsError(isError);
   };
 
-  const setAudioSource = (url: string, isObjectUrl = false) => {
-    if (currentAudioUrlRef.current) {
-      URL.revokeObjectURL(currentAudioUrlRef.current);
-    }
-    currentAudioUrlRef.current = isObjectUrl ? url : null;
-
-    if (audioRef.current) {
-      audioRef.current.src = url;
-      audioRef.current.play().catch(() => {
-        setStatusMessage("Audio ready. Press play to listen.");
-      });
-    }
-  };
-
+  // The Orpheus API returns raw PCM audio data. Browsers need a WAV header
+  // to play it, so we prepend a standard 44-byte RIFF/WAVE header.
   const wrapPcmInWav = (pcmData: Uint8Array, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): Uint8Array => {
     const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
     const blockAlign = numChannels * (bitsPerSample / 8);
@@ -178,8 +103,8 @@ export default function Home() {
     view.setUint32(4, 36 + dataSize, true);
     writeString(8, "WAVE");
     writeString(12, "fmt ");
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
+    view.setUint32(16, 16, true);            // PCM format
+    view.setUint16(20, 1, true);             // Audio format: 1 = PCM
     view.setUint16(22, numChannels, true);
     view.setUint32(24, sampleRate, true);
     view.setUint32(28, byteRate, true);
@@ -192,18 +117,25 @@ export default function Home() {
     return wav;
   };
 
-  const setAudioFromBytes = (bytes: Uint8Array, contentType?: string) => {
-    let audioBlob: Blob;
-    if (contentType?.includes("pcm") || !contentType) {
-      const wavData = wrapPcmInWav(bytes);
-      audioBlob = new Blob([wavData], { type: "audio/wav" });
-    } else {
-      audioBlob = new Blob([bytes], { type: contentType });
+  // Play audio bytes in the browser. Wraps PCM in WAV if needed.
+  const playAudio = (bytes: Uint8Array, contentType?: string) => {
+    const isPcm = !contentType || contentType.includes("pcm");
+    const audioData = isPcm ? wrapPcmInWav(bytes) : bytes;
+    const mimeType = isPcm ? "audio/wav" : contentType;
+    const blob = new Blob([audioData.buffer as ArrayBuffer], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+
+    if (audioRef.current) {
+      audioRef.current.src = url;
+      setHasAudio(true);
+      audioRef.current.play().catch(() => {
+        setStatusMessage("Audio ready. Press play to listen.");
+      });
     }
-    const objectUrl = URL.createObjectURL(audioBlob);
-    setAudioSource(objectUrl, true);
   };
 
+  // Handle Server-Sent Events (SSE) streaming responses.
+  // The API streams status updates as JSON events, then delivers audio.
   const handleSseResponse = async (response: Response) => {
     if (!response.body) {
       throw new Error("Streaming response body is not available.");
@@ -217,70 +149,66 @@ export default function Home() {
 
     while (true) {
       const { value, done } = await reader.read();
-      if (done) {
-        break;
-      }
+      if (done) break;
       buffer += decoder.decode(value, { stream: true });
 
+      // SSE events are separated by double newlines
       const chunks = buffer.split("\n\n");
       buffer = chunks.pop() || "";
 
       for (const chunk of chunks) {
-        const lines = chunk.split("\n");
-        const dataLines = lines
+        // Extract "data:" lines from each SSE event
+        const data = chunk
+          .split("\n")
           .filter((line) => line.startsWith("data:"))
-          .map((line) => line.slice(5).trimStart());
+          .map((line) => line.slice(5).trimStart())
+          .join("\n")
+          .trim();
 
-        if (dataLines.length === 0) {
-          continue;
-        }
-
-        const data = dataLines.join("\n").trim();
-        if (!data) {
-          continue;
-        }
-        if (data === "[DONE]" || data === "[done]") {
-          return gotAudio;
-        }
+        if (!data) continue;
+        if (data === "[DONE]" || data === "[done]") return gotAudio;
 
         try {
-          const payload = JSON.parse(data) as {
+          const event = JSON.parse(data) as {
             message?: string;
             audio_url?: string;
             audio_base64?: string;
             audio?: string;
             is_final?: boolean;
           };
-          if (payload.message) {
-            setStatusMessage(payload.message);
-          }
-          if (payload.audio_url) {
-            setAudioSource(payload.audio_url);
+          if (event.message) setStatusMessage(event.message);
+          if (event.audio_url) {
+            if (audioRef.current) {
+              audioRef.current.src = event.audio_url;
+              setHasAudio(true);
+            }
             gotAudio = true;
           }
-          if (payload.audio_base64 || payload.audio) {
-            audioBase64 += payload.audio_base64 || payload.audio || "";
+          if (event.audio_base64 || event.audio) {
+            audioBase64 += event.audio_base64 || event.audio || "";
             gotAudio = true;
           }
-          if (payload.is_final) {
-            break;
-          }
+          if (event.is_final) break;
         } catch {
           setStatusMessage(data);
         }
       }
     }
 
+    // Decode accumulated base64 audio and play it
     if (audioBase64) {
       const binary = atob(audioBase64);
       const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-      setAudioFromBytes(bytes);
+      playAudio(bytes);
       gotAudio = true;
     }
 
     return gotAudio;
   };
 
+  // ── Main API call ──────────────────────────────────────────────────
+  // POST to the Orpheus TTS endpoint with text, voice, emotion, and speed.
+  // The response is either a binary audio stream or SSE events.
   const generateAudio = async () => {
     if (!apiKey.trim()) {
       setStatusMessage("Enter your SLNG API key.", true);
@@ -290,26 +218,30 @@ export default function Home() {
       setStatusMessage("Enter some text to synthesize.", true);
       return;
     }
-    if (!normalizedBaseUrl) {
-      setStatusMessage("Enter a base URL.", true);
-      return;
-    }
 
     setStatusMessage("");
     setIsBusy(true);
 
     try {
-      const endpoint = `${normalizedBaseUrl}/v1/tts/slng/canopylabs/orpheus:en`;
-      setStatusMessage(`Calling ${endpoint}`);
+      // Build the request payload — only include optional fields when set
+      const body: TtsPayload = { prompt: text.trim() };
+      if (voice) body.voice = voice;
+      if (emotion) body.emotion = emotion;
+      const speedValue = parseFloat(speed);
+      if (!isNaN(speedValue) && speedValue !== 1.0) body.speed = speedValue;
 
+      const base = baseUrl.trim().replace(/\/+$/, "") || "https://api.slng.ai";
+      const endpoint = `${base}/v1/tts/slng/canopylabs/orpheus:en`;
+
+      // Make the API request
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey.trim()}`,
-          Accept: "text/event-stream",
+          Authorization: `Bearer ${apiKey.trim()}`,  // Your SLNG API key
+          Accept: "text/event-stream",                // Request SSE streaming
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -317,17 +249,20 @@ export default function Home() {
         throw new Error(`API error ${response.status}: ${errorBody}`);
       }
 
+      // Handle the response based on content type
       const contentType = response.headers.get("content-type") || "";
+
       if (contentType.includes("text/event-stream")) {
+        // SSE: API streams status updates, then delivers audio
         setStatusMessage("Streaming audio...");
         const gotAudio = await handleSseResponse(response);
         if (!gotAudio) {
           setStatusMessage("Stream ended without audio.", true);
         }
       } else {
-        const rawBlob = await response.blob();
-        const bytes = new Uint8Array(await rawBlob.arrayBuffer());
-        setAudioFromBytes(bytes, contentType);
+        // Binary: API returns audio bytes directly (typically audio/pcm)
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        playAudio(bytes, contentType);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate audio.";
@@ -343,8 +278,7 @@ export default function Home() {
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const newText = text.slice(0, start) + tag + text.slice(end);
-    setText(newText);
+    setText(text.slice(0, start) + tag + text.slice(end));
 
     setTimeout(() => {
       textarea.focus();
@@ -354,6 +288,16 @@ export default function Home() {
 
   const isMissingApiKey = apiKey.trim().length === 0;
   const isSpeakDisabled = isBusy || isMissingApiKey;
+
+  // Compute these inline for the "Show how this works" panel
+  const base = baseUrl.trim().replace(/\/+$/, "") || "https://api.slng.ai";
+  const inspectEndpoint = `${base}/v1/tts/slng/canopylabs/orpheus:en`;
+  const inspectPayload: TtsPayload = { prompt: text.trim() };
+  if (voice) inspectPayload.voice = voice;
+  if (emotion) inspectPayload.emotion = emotion;
+  const speedVal = parseFloat(speed);
+  if (!isNaN(speedVal) && speedVal !== 1.0) inspectPayload.speed = speedVal;
+  const curlPreview = `curl "${inspectEndpoint}" \\\n  -H "Authorization: Bearer $SLNG_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(inspectPayload)}' \\\n  -o output_audio.wav`;
 
   return (
     <div className="page">
@@ -372,35 +316,36 @@ export default function Home() {
         </div>
       </header>
 
-      <div className={`card ${isPlaying ? "is-playing" : ""}`}>
+      <div className="card">
         <h1>Emotion-Controlled TTS</h1>
         <p>Choose an emotion and hear the difference in voice expression.</p>
 
-        <label>Select Emotion</label>
-        <div className="emotion-selector">
-          {emotions.map((e) => (
-            <button
-              key={e.value}
-              type="button"
-              className={`emotion-chip ${emotion === e.value ? "selected" : ""}`}
-              onClick={() => setEmotion(e.value)}
-            >
-              <span className="emoji">{e.emoji}</span>
-              {e.label}
-            </button>
-          ))}
+        <label htmlFor="textInput">Text to speak</label>
+        <div className="text-editor">
+          <div className="emotive-toolbar">
+            <span className="toolbar-label">Insert tag:</span>
+            {emotiveTags.map((t) => (
+              <button
+                key={t.tag}
+                className="toolbar-btn"
+                type="button"
+                onClick={() => insertEmotiveTag(t.tag)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <textarea
+            id="textInput"
+            ref={textAreaRef}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Type something expressive..."
+          />
         </div>
 
-        <label htmlFor="textInput">Text to speak</label>
-        <textarea
-          id="textInput"
-          ref={textAreaRef}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="Type something expressive..."
-        />
-
         <div className="prompt-chips">
+          <span className="toolbar-label">Examples &mdash; prefills text + emotion</span>
           {promptSuggestions.map((suggestion) => (
             <button
               key={suggestion.prompt}
@@ -417,66 +362,36 @@ export default function Home() {
           ))}
         </div>
 
-        <details>
-          <summary>Add emotive tags</summary>
-          <p style={{ marginTop: "12px", fontSize: "0.9rem" }}>
-            Insert special tags to add sounds like laughs, sighs, or gasps.
-          </p>
-          <div className="prompt-chips" style={{ marginTop: "8px" }}>
-            {emotiveTags.map((t) => (
+        <div className="output-settings">
+          <label id="emotionLabel">Emotion</label>
+          <div className="emotion-selector" role="group" aria-labelledby="emotionLabel">
+            {emotions.map((e) => (
               <button
-                key={t.tag}
-                className="chip"
+                key={e.value}
                 type="button"
-                onClick={() => insertEmotiveTag(t.tag)}
+                className={`emotion-chip ${emotion === e.value ? "selected" : ""}`}
+                aria-pressed={emotion === e.value}
+                onClick={() => setEmotion(emotion === e.value ? "" : e.value)}
               >
-                {t.label}
+                <span className="emoji">{e.emoji}</span>
+                {e.label}
               </button>
             ))}
           </div>
-        </details>
-
-        <div className="row">
-          <input
-            type="password"
-            placeholder="Paste your SLNG API key"
-            autoComplete="off"
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-          />
-          <button
-            className={`hero-button ${isBusy ? "is-loading" : ""} ${
-              isMissingApiKey ? "is-disabled" : ""
-            }`}
-            onClick={generateAudio}
-            disabled={isSpeakDisabled}
-            data-default-text="Speak"
-            data-loading-text="Generating..."
-          >
-            <span className="pulse" aria-hidden="true"></span>
-            {isBusy ? "Generating..." : "Speak"}
-          </button>
-        </div>
-        <a
-          className="cta-link"
-          href="https://slng.ai?utm_source=slng-demo&utm_medium=example&utm_campaign=orpheus-emotion"
-        >
-          Get API key
-        </a>
-
-        <details>
-          <summary>Advanced settings</summary>
-          <label htmlFor="baseUrl">Base URL</label>
-          <input
-            id="baseUrl"
-            type="text"
-            value={baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
-          />
 
           <div className="row">
             <div>
-              <label htmlFor="voiceSelect">Voice</label>
+              <div className="label-row">
+                <label htmlFor="voiceSelect">Voice</label>
+                <a
+                  className="label-link"
+                  href="https://slng.ai/docs/voices?utm_source=slng-demo&utm_medium=example&utm_campaign=orpheus-emotion"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Discover voices &rarr;
+                </a>
+              </div>
               <select
                 id="voiceSelect"
                 value={voice}
@@ -490,29 +405,76 @@ export default function Home() {
               </select>
             </div>
             <div>
-              <label htmlFor="speedInput">Speed (0.5 - 2.0)</label>
+              <div className="label-row">
+                <label htmlFor="apiKeyInput">API Key</label>
+                <a
+                  className="label-link"
+                  href="https://slng.ai?utm_source=slng-demo&utm_medium=example&utm_campaign=orpheus-emotion"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Get API key &rarr;
+                </a>
+              </div>
               <input
-                id="speedInput"
-                type="text"
-                placeholder="1.0"
-                value={speed}
-                onChange={(event) => setSpeed(event.target.value)}
+                id="apiKeyInput"
+                type="password"
+                placeholder="Paste your SLNG API key"
+                autoComplete="off"
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
               />
             </div>
           </div>
-        </details>
 
-        <audio ref={audioRef} controls></audio>
-        <div className={`status ${statusIsError ? "error" : ""}`}>
-          {status}
+          <div className="action-row">
+            <button
+              className={`hero-button ${isBusy ? "is-loading" : ""} ${
+                isMissingApiKey ? "is-disabled" : ""
+              }`}
+              onClick={generateAudio}
+              disabled={isSpeakDisabled}
+            >
+              <span className="pulse" aria-hidden="true"></span>
+              {isBusy ? "Generating..." : "Say it"}
+            </button>
+          </div>
+
+          <audio ref={audioRef} controls className={hasAudio ? "" : "hidden"}></audio>
+          <div className={`status ${statusIsError ? "error" : ""}`}>
+            {status}
+          </div>
         </div>
+
+        <details>
+          <summary>Settings</summary>
+          <label htmlFor="baseUrl">Base URL</label>
+          <input
+            id="baseUrl"
+            type="text"
+            value={baseUrl}
+            onChange={(event) => setBaseUrl(event.target.value)}
+          />
+
+          <label htmlFor="speedInput">Speed (0.5 - 2.0)</label>
+          <input
+            id="speedInput"
+            type="number"
+            min="0.5"
+            max="2.0"
+            step="0.1"
+            placeholder="1.0"
+            value={speed}
+            onChange={(event) => setSpeed(event.target.value)}
+          />
+        </details>
 
         <details className="inspect">
           <summary>Show how this works</summary>
           <div className="inspect-grid">
             <div className="inspect-card">
               <h3>Request payload</h3>
-              <pre>{JSON.stringify(payload, null, 2)}</pre>
+              <pre>{JSON.stringify(inspectPayload, null, 2)}</pre>
             </div>
             <div className="inspect-card">
               <h3>cURL</h3>

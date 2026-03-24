@@ -174,6 +174,7 @@ label {
 textarea,
 input[type="password"],
 input[type="text"],
+input[type="number"],
 select {
   width: 100%;
   padding: 12px;
@@ -200,8 +201,38 @@ textarea {
   flex: 1 1 240px;
 }
 
+.output-settings {
+  margin-top: 20px;
+  padding: 20px;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.output-settings .emotion-selector {
+  margin-top: 8px;
+}
+
+.output-settings label,
+.output-settings .label-row {
+  margin-top: 16px;
+}
+
+.output-settings label:first-child {
+  margin-top: 0;
+}
+
+.action-row {
+  margin-top: 16px;
+}
+
+.action-row .hero-button {
+  width: 100%;
+}
+
 .prompt-chips {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 12px;
@@ -258,6 +289,62 @@ textarea {
   font-size: 1.1rem;
 }
 
+.text-editor {
+  border: 1px solid var(--input);
+  border-radius: var(--radius);
+  background: var(--popover);
+  overflow: hidden;
+}
+
+.text-editor textarea {
+  border: none;
+  border-radius: 0;
+}
+
+.text-editor:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.text-editor textarea:focus-visible {
+  outline: none;
+}
+
+.emotive-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--secondary);
+}
+
+.toolbar-btn {
+  background: none;
+  border: 1px solid transparent;
+  box-shadow: none;
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.toolbar-btn:hover {
+  background: var(--card);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.toolbar-label {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin-right: 4px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
 button {
   background: var(--primary);
   color: var(--primary-foreground);
@@ -275,9 +362,10 @@ button:disabled {
 
 .hero-button:disabled {
   opacity: 1;
-  background: var(--muted);
+  background: var(--card);
   color: var(--muted-foreground);
   box-shadow: none;
+  border: 1px solid var(--border);
 }
 
 .hero-button {
@@ -318,16 +406,30 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-.cta-link {
-  display: inline-block;
-  margin-top: 10px;
-  color: var(--foreground);
-  font-weight: 600;
+.label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+
+.label-row label {
+  margin: 0;
+}
+
+.label-link {
+  font-size: 0.82rem;
+  color: var(--muted-foreground);
   text-decoration: none;
 }
 
-.cta-link:hover {
+.label-link:hover {
   text-decoration: underline;
+  color: var(--foreground);
+}
+
+audio.hidden {
+  display: none;
 }
 
 audio {
