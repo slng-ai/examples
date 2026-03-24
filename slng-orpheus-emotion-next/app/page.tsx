@@ -160,9 +160,46 @@ export default function Home() {
     }
   };
 
-  const setAudioFromBytes = (bytes: Uint8Array) => {
-    const audioBuffer = new Uint8Array(bytes).buffer;
-    const audioBlob = new Blob([audioBuffer]);
+  const wrapPcmInWav = (pcmData: Uint8Array, sampleRate = 24000, numChannels = 1, bitsPerSample = 16): Uint8Array => {
+    const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+    const blockAlign = numChannels * (bitsPerSample / 8);
+    const dataSize = pcmData.byteLength;
+    const headerSize = 44;
+    const wav = new Uint8Array(headerSize + dataSize);
+    const view = new DataView(wav.buffer);
+
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    };
+
+    writeString(0, "RIFF");
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(8, "WAVE");
+    writeString(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeString(36, "data");
+    view.setUint32(40, dataSize, true);
+    wav.set(pcmData, headerSize);
+
+    return wav;
+  };
+
+  const setAudioFromBytes = (bytes: Uint8Array, contentType?: string) => {
+    let audioBlob: Blob;
+    if (contentType?.includes("pcm") || !contentType) {
+      const wavData = wrapPcmInWav(bytes);
+      audioBlob = new Blob([wavData], { type: "audio/wav" });
+    } else {
+      audioBlob = new Blob([bytes], { type: contentType });
+    }
     const objectUrl = URL.createObjectURL(audioBlob);
     setAudioSource(objectUrl, true);
   };
@@ -288,9 +325,9 @@ export default function Home() {
           setStatusMessage("Stream ended without audio.", true);
         }
       } else {
-        const audioBlob = await response.blob();
-        const objectUrl = URL.createObjectURL(audioBlob);
-        setAudioSource(objectUrl, true);
+        const rawBlob = await response.blob();
+        const bytes = new Uint8Array(await rawBlob.arrayBuffer());
+        setAudioFromBytes(bytes, contentType);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate audio.";
