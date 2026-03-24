@@ -385,7 +385,7 @@ export default function Home() {
                 <label htmlFor="voiceSelect">Voice</label>
                 <a
                   className="label-link"
-                  href="https://slng.ai/docs/voices?utm_source=slng-demo&utm_medium=example&utm_campaign=orpheus-emotion"
+                  href="https://docs.slng.ai/voices/orpheus?utm_source=slng-demo&utm_medium=example&utm_campaign=orpheus-emotion"
                   target="_blank"
                   rel="noopener"
                 >
