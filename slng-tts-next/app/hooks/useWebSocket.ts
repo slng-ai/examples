@@ -52,9 +52,14 @@ export function useWebSocket(callbacks: WsCallbacks) {
 
         if (initMessage) {
           ws.send(initMessage);
+          callbacksRef.current.onLog(`Sent init: ${initMessage}`);
         }
 
-        callbacksRef.current.onStatusChange("Connected. Waiting for ready...");
+        // Mark ready immediately — some providers (e.g. KugelAudio) don't
+        // send a "ready" event. For those that do, the ready handler below
+        // is simply a no-op since isReady is already true.
+        setIsReady(true);
+        callbacksRef.current.onStatusChange("Connected. Ready to send text.");
       });
 
       ws.addEventListener("message", (event) => {

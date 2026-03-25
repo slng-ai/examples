@@ -15,6 +15,9 @@ import {
   promptSuggestions,
   getVoicesForModel,
   getDefaultVoiceForModel,
+  getWsUrl,
+  isWsOnlyModel,
+  getDefaultInitPayload,
   BRIDGES_BASE_URL,
   REST_BASE_URL,
   DEFAULT_MODEL,
@@ -72,9 +75,10 @@ export default function Home() {
   const [customPayload, setCustomPayload] = useState(
     '{\n  "type": "text",\n  "text": "Hello from WebSocket!"\n}'
   );
+  const [useDirectUrl, setUseDirectUrl] = useState(false);
   const [useCustomInit, setUseCustomInit] = useState(false);
   const [customInitPayload, setCustomInitPayload] = useState(
-    `{\n  "type": "init",\n  "model": "${DEFAULT_MODEL}",\n  "voice": "${DEFAULT_VOICE}",\n  "config": {\n    "sample_rate": 24000,\n    "encoding": "linear16"\n  }\n}`
+    getDefaultInitPayload(DEFAULT_MODEL, DEFAULT_VOICE)
   );
 
   // ── Refs ──
@@ -84,7 +88,7 @@ export default function Home() {
   const restAbortControllerRef = useRef<AbortController | null>(null);
 
   // ── Hooks ──
-  const { entries, appendLog } = useSessionLog();
+  const { entries, appendLog, clearLog } = useSessionLog();
   const parsedSampleRate = useMemo(() => {
     const v = parseInt(sampleRate, 10);
     return Number.isFinite(v) && v > 0 ? v : 24000;
@@ -148,10 +152,11 @@ export default function Home() {
     (payload: Record<string, unknown>) => {
       if (
         payload.type === "audio_end" ||
-        (payload.type as string)?.toLowerCase() === "flushed"
+        (payload.type as string)?.toLowerCase() === "flushed" ||
+        (payload.chunk_complete && payload.is_final)
       ) {
         if (audioFormat === "linear16") {
-          appendLog("Stream flushed (streaming via Web Audio API).");
+          appendLog("Stream complete (streaming via Web Audio API).");
           setWaveformActive(false);
         } else {
           markAudioEnd();
@@ -167,24 +172,40 @@ export default function Home() {
         setAudioSource(payload.audio_url as string);
       }
 
-      if (payload.audio_base64 || payload.audio) {
-        audioChunksBase64Ref.current +=
-          (payload.audio_base64 as string) || (payload.audio as string) || "";
+      // Handle audio chunks in various formats:
+      // - Bridge: {"type":"audio_chunk","data":"<base64>"}
+      // - Kugel direct: {"audio":"<base64>"}
+      // - Legacy: {"audio_base64":"<base64>"}
+      const audioB64 =
+        (payload.data as string) ||
+        (payload.audio as string) ||
+        (payload.audio_base64 as string);
+
+      const isAudioChunk =
+        audioB64 &&
+        (payload.type === "chunk" ||
+          payload.type === "audio_chunk" ||
+          payload.audio ||
+          payload.audio_base64);
+
+      if (isAudioChunk) {
+        const bytes = base64ToBytes(audioB64);
+
+        if (audioFormat === "linear16") {
+          // Stream PCM directly via Web Audio API for gapless playback
+          playPcmChunk(bytes);
+          setWaveformActive(true);
+        } else {
+          // Buffer non-PCM formats and flush as a single blob
+          appendChunk(bytes);
+          scheduleFlush(handleBufferFlush, true);
+        }
       }
 
       if (payload.is_final && audioChunksBase64Ref.current) {
         const bytes = base64ToBytes(audioChunksBase64Ref.current);
         setAudioFromBytes(bytes, audioFormat);
         audioChunksBase64Ref.current = "";
-      }
-
-      if (
-        (payload.type === "chunk" || payload.type === "audio_chunk") &&
-        payload.data
-      ) {
-        const bytes = base64ToBytes(payload.data as string);
-        appendChunk(bytes);
-        scheduleFlush(handleBufferFlush, true);
       }
     },
     [
@@ -197,6 +218,7 @@ export default function Home() {
       scheduleFlush,
       handleBufferFlush,
       appendChunk,
+      playPcmChunk,
     ]
   );
 
@@ -253,10 +275,23 @@ export default function Home() {
     };
   }, []);
 
-  // ── Update WS URL when model changes ──
+  // ── Update WS URL when model or URL mode changes ──
   useEffect(() => {
-    setWsUrl(BRIDGES_BASE_URL + model);
+    setWsUrl(getWsUrl(model, useDirectUrl));
+  }, [model, useDirectUrl]);
+
+  // ── Auto-switch to WebSocket for WS-only models ──
+  useEffect(() => {
+    if (isWsOnlyModel(model) && currentMode === "rest") {
+      handleModeChange("websocket");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model]);
+
+  // ── Update custom init payload when model/voice changes ──
+  useEffect(() => {
+    setCustomInitPayload(getDefaultInitPayload(model, voice));
+  }, [model, voice]);
 
   // ── Mode switching ──
   const handleModeChange = useCallback(
@@ -507,7 +542,7 @@ export default function Home() {
   const isMissingApiKey = apiKey.trim().length === 0;
   const isSendDisabled = isWs
     ? !isReady
-    : isBusy || isMissingApiKey;
+    : isBusy || isMissingApiKey || isWsOnlyModel(model);
 
   const restPayload = useMemo(() => {
     const p: Record<string, string> = { model, text: text.trim() };
@@ -541,7 +576,7 @@ export default function Home() {
         <h1>SLNG TTS Demo</h1>
         <p>Type something and hear it instantly.</p>
 
-        <ModeToggle currentMode={currentMode} onModeChange={handleModeChange} />
+        <ModeToggle currentMode={currentMode} onModeChange={handleModeChange} disableRest={isWsOnlyModel(model)} />
 
         <label htmlFor="textInput">Text to synthesize</label>
         <textarea
@@ -696,7 +731,7 @@ export default function Home() {
         )}
 
         {/* Log console */}
-        <LogConsole entries={entries} />
+        <LogConsole entries={entries} onClear={clearLog} />
 
         {/* How to implement — mode-aware */}
         <details>
@@ -781,7 +816,7 @@ function playPcmChunk(pcmBytes) {
 }
 
 // Connect to WebSocket
-const ws = new WebSocket("${BRIDGES_BASE_URL}" + MODEL);
+const ws = new WebSocket("${wsUrl}");
 ws.binaryType = "arraybuffer";
 
 ws.onopen = () => {
@@ -816,15 +851,28 @@ ws.onmessage = (event) => {
         {isWs && (
           <details>
             <summary>Advanced settings</summary>
-            <label htmlFor="wsUrlInput" style={{ marginTop: 12 }}>
-              WebSocket URL
-            </label>
-            <input
-              id="wsUrlInput"
-              type="text"
-              value={wsUrl}
-              onChange={(e) => setWsUrl(e.target.value)}
-            />
+            <div className="row" style={{ marginTop: 12 }}>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="wsUrlInput">WebSocket URL</label>
+                <input
+                  id="wsUrlInput"
+                  type="text"
+                  value={wsUrl}
+                  onChange={(e) => setWsUrl(e.target.value)}
+                />
+              </div>
+              <div style={{ flex: "0 0 200px", alignSelf: "flex-end" }}>
+                <label htmlFor="urlPattern">URL pattern</label>
+                <select
+                  id="urlPattern"
+                  value={useDirectUrl ? "direct" : "bridge"}
+                  onChange={(e) => setUseDirectUrl(e.target.value === "direct")}
+                >
+                  <option value="bridge">Bridge (/v1/bridges/unmute/tts/)</option>
+                  <option value="direct">Direct (/v1/tts/)</option>
+                </select>
+              </div>
+            </div>
 
             <div className="row">
               <div>

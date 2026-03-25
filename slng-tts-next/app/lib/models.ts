@@ -1,6 +1,7 @@
 export type ModelOption = {
   value: string;
   label: string;
+  wsOnly?: boolean; // true = no REST endpoint, WebSocket streaming only
 };
 
 export type ModelGroup = {
@@ -68,6 +69,13 @@ export const modelGroups: ModelGroup[] = [
   {
     label: "Canopy Labs",
     options: [{ value: "slng/canopylabs/orpheus:en", label: "slng/canopylabs/orpheus:en" }],
+  },
+  {
+    label: "KugelAudio",
+    options: [
+      { value: "kugelaudio/kugel:1-turbo", label: "kugelaudio/kugel:1-turbo", wsOnly: true },
+      { value: "kugelaudio/kugel:1", label: "kugelaudio/kugel:1", wsOnly: true },
+    ],
   },
 ];
 
@@ -202,6 +210,13 @@ const canopyLabsVoices: VoiceGroup[] = [
   },
 ];
 
+const kugelAudioVoices: VoiceGroup[] = [
+  {
+    label: "Default",
+    options: [{ value: "268", label: "Voice 268 (default)" }],
+  },
+];
+
 /**
  * Returns the voice groups appropriate for the given model,
  * and the docs URL for that provider's voices.
@@ -231,6 +246,12 @@ export function getVoicesForModel(model: string): {
   if (model.includes("canopy") || model.includes("orpheus")) {
     return {
       groups: canopyLabsVoices,
+      docsUrl: "https://docs.slng.ai/voices",
+    };
+  }
+  if (model.includes("kugelaudio") || model.includes("kugel")) {
+    return {
+      groups: kugelAudioVoices,
       docsUrl: "https://docs.slng.ai/voices",
     };
   }
@@ -288,6 +309,47 @@ export const promptSuggestions: PromptSuggestion[] = [
 ];
 
 export const BRIDGES_BASE_URL = "wss://api.slng.ai/v1/bridges/unmute/tts/";
+export const DIRECT_WS_BASE_URL = "wss://api.slng.ai/v1/tts/";
 export const REST_BASE_URL = "https://api.slng.ai/v1/bridges/unmute/tts/";
 export const DEFAULT_MODEL = "slng/deepgram/aura:2";
 export const DEFAULT_VOICE = "aura-2-thalia-en";
+
+export function isWsOnlyModel(model: string): boolean {
+  return modelGroups
+    .flatMap((g) => g.options)
+    .some((o) => o.value === model && o.wsOnly);
+}
+
+export function isKugelModel(model: string): boolean {
+  return model.startsWith("kugelaudio/");
+}
+
+export function getWsUrl(model: string, useDirect: boolean): string {
+  if (useDirect) return DIRECT_WS_BASE_URL + model;
+  return BRIDGES_BASE_URL + model;
+}
+
+export function getDefaultInitPayload(model: string, voice: string): string {
+  if (isKugelModel(model)) {
+    return JSON.stringify(
+      {
+        type: "init",
+        model,
+        voice,
+        config: { cfg_scale: 2, sample_rate: 24000, speed: 1 },
+      },
+      null,
+      2
+    );
+  }
+  return JSON.stringify(
+    {
+      type: "init",
+      model,
+      voice,
+      config: { sample_rate: 24000, encoding: "linear16" },
+    },
+    null,
+    2
+  );
+}
