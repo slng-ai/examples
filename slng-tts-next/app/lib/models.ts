@@ -32,15 +32,6 @@ export const modelGroups: ModelGroup[] = [
     options: [{ value: "deepgram/aura:2", label: "deepgram/aura:2" }],
   },
   {
-    label: "ElevenLabs",
-    options: [
-      { value: "elevenlabs/eleven:3", label: "elevenlabs/eleven:3" },
-      { value: "elevenlabs/eleven-flash:2", label: "elevenlabs/eleven-flash:2" },
-      { value: "elevenlabs/eleven-flash:2.5", label: "elevenlabs/eleven-flash:2.5" },
-      { value: "elevenlabs/eleven-multilingual:2", label: "elevenlabs/eleven-multilingual:2" },
-    ],
-  },
-  {
     label: "Sarvam",
     options: [{ value: "sarvam/bulbul:v3", label: "sarvam/bulbul:v3" }],
   },
@@ -183,15 +174,6 @@ const rimeArcanaVoices: VoiceGroup[] = [
   },
 ];
 
-const elevenlabsVoices: VoiceGroup[] = [
-  {
-    label: "Default",
-    options: [
-      { value: "default", label: "Default voice" },
-    ],
-  },
-];
-
 const sarvamVoices: VoiceGroup[] = [
   {
     label: "Default",
@@ -229,12 +211,6 @@ export function getVoicesForModel(model: string): {
     return {
       groups: rimeArcanaVoices,
       docsUrl: "https://docs.slng.ai/voices/rime-arcana",
-    };
-  }
-  if (model.includes("elevenlabs")) {
-    return {
-      groups: elevenlabsVoices,
-      docsUrl: "https://docs.slng.ai/voices",
     };
   }
   if (model.includes("sarvam")) {

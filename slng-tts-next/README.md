@@ -55,7 +55,6 @@ The UI ships with presets for multiple providers:
 | Provider | Models |
 |----------|--------|
 | **Deepgram** | `deepgram/aura:2` |
-| **ElevenLabs** | `elevenlabs/eleven:3`, `eleven-flash:2`, `eleven-flash:2.5`, `eleven-multilingual:2` |
 | **Sarvam** | `sarvam/bulbul:v3` |
 | **SLNG / Deepgram** | `slng/deepgram/aura:2`, `aura:2-en`, `aura:2-es` |
 | **SLNG / Rime** | `slng/rime/arcana:3-en`, `:3-es`, `:3-fr`, `:3-hi`, `:ar`, `:de`, `:en`, `:es`, `:fr` |
