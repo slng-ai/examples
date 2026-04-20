@@ -21,6 +21,7 @@ import {
   DEFAULT_MODEL,
 } from "./lib/models";
 import { floatTo16BitPCM, decodeAudioFile } from "./lib/audio-utils";
+import { getProtocol } from "./lib/protocols";
 
 type InputSource = "microphone" | "file" | "url";
 type ConnectionMode = "websocket" | "http";
@@ -58,7 +59,11 @@ export default function Home() {
   const [useDirectUrl, setUseDirectUrl] = useState(false);
   const [useCustomInit, setUseCustomInit] = useState(false);
   const [customInitPayload, setCustomInitPayload] = useState(
-    getDefaultInitPayload(DEFAULT_MODEL, { sampleRate: 16000, encoding: "linear16", language: "en" })
+    getDefaultInitPayload(
+      DEFAULT_MODEL,
+      { sampleRate: 16000, language: "en", encoding: "linear16", enablePartials: true },
+      getProtocol(DEFAULT_MODEL, false)
+    )
   );
   const [enablePartials, setEnablePartials] = useState(true);
   const [isStreamingPlayback, setIsStreamingPlayback] = useState(false);
@@ -80,6 +85,10 @@ export default function Home() {
     analyserNodeRef: playbackAnalyserRef,
     ensureAudioContext,
   } = useWebAudio(parsedSampleRate);
+  const protocol = useMemo(
+    () => getProtocol(model, useDirectUrl),
+    [model, useDirectUrl]
+  );
 
   // -- Status helpers --
   const setStatusMessage = useCallback((message: string, isError = false) => {
@@ -108,6 +117,11 @@ export default function Home() {
       const alts = results[0].alternatives as Array<Record<string, unknown>> | undefined;
       if (alts?.[0]?.transcript) return alts[0].transcript as string;
     }
+    // Soniox tokens[] format
+    const tokens = payload.tokens as Array<Record<string, unknown>> | undefined;
+    if (Array.isArray(tokens)) {
+      return tokens.map((t) => (typeof t.text === "string" ? t.text : "")).join("");
+    }
     return null;
   }, []);
 
@@ -117,6 +131,11 @@ export default function Home() {
     if (payload.speech_final === true) return true;
     const type = (payload.type as string)?.toLowerCase();
     if (type === "final_transcript") return true;
+    // Soniox: every token in the array is final
+    const tokens = payload.tokens as Array<Record<string, unknown>> | undefined;
+    if (Array.isArray(tokens) && tokens.length > 0) {
+      return tokens.every((t) => t.is_final === true);
+    }
     return false;
   }, []);
 
@@ -126,6 +145,26 @@ export default function Home() {
       // Skip metadata/ready messages — not transcript data
       const msgType = (payload.type as string)?.toLowerCase();
       if (msgType === "metadata" || msgType === "ready") return;
+
+      // Soniox tokens[]: per-token final/partial split
+      const tokens = payload.tokens as Array<Record<string, unknown>> | undefined;
+      if (Array.isArray(tokens)) {
+        const finalChunk = tokens
+          .filter((t) => t.is_final === true)
+          .map((t) => (typeof t.text === "string" ? t.text : ""))
+          .join("");
+        const partialChunk = tokens
+          .filter((t) => t.is_final !== true)
+          .map((t) => (typeof t.text === "string" ? t.text : ""))
+          .join("");
+        if (finalChunk) {
+          setFinalText((prev) => prev + finalChunk);
+          appendLog(`Final tokens: "${finalChunk}"`);
+        }
+        setPartialText(partialChunk);
+        if (partialChunk) appendLog(`Partial tokens: "${partialChunk}"`);
+        return;
+      }
 
       const transcript = extractTranscript(payload);
       if (transcript !== null && transcript.trim()) {
@@ -170,12 +209,20 @@ export default function Home() {
     onStatusChange: setStatusMessage,
   });
 
-  // -- Microphone --
-  const handleMicAudioData = useCallback(
+  // -- Audio sender (raw binary frames; kept as a helper for future protocol variants) --
+  const sendAudio = useCallback(
     (pcmData: ArrayBuffer) => {
       sendBinary(pcmData);
     },
     [sendBinary]
+  );
+
+  // -- Microphone --
+  const handleMicAudioData = useCallback(
+    (pcmData: ArrayBuffer) => {
+      sendAudio(pcmData);
+    },
+    [sendAudio]
   );
 
   const {
@@ -207,13 +254,13 @@ export default function Home() {
   // -- Update custom init when config changes --
   useEffect(() => {
     setCustomInitPayload(
-      getDefaultInitPayload(model, {
-        sampleRate: parsedSampleRate,
-        encoding,
-        language,
-      })
+      getDefaultInitPayload(
+        model,
+        { sampleRate: parsedSampleRate, encoding, language, enablePartials },
+        protocol
+      )
     );
-  }, [model, parsedSampleRate, encoding, language]);
+  }, [model, parsedSampleRate, encoding, language, enablePartials, protocol]);
 
   // -- Mode switching --
   const handleModeChange = useCallback(
@@ -243,6 +290,9 @@ export default function Home() {
       fileStreamingRef.current = false;
       setIsStreamingPlayback(false);
       closeAudio();
+      if (protocol.closeText !== undefined) {
+        sendJson(protocol.closeText);
+      }
       disconnect();
       return;
     }
@@ -260,18 +310,16 @@ export default function Home() {
       return;
     }
 
-    const initConfig: Record<string, unknown> = {
-      encoding,
-      sample_rate: parsedSampleRate,
+    const initObject = protocol.buildInitMessage({
+      sampleRate: parsedSampleRate,
       language,
-    };
-    if (enablePartials) {
-      initConfig.enable_partial_transcripts = true;
-    }
+      encoding,
+      enablePartials,
+    });
 
     const initMessage = useCustomInit
       ? customInitPayload.trim()
-      : JSON.stringify({ type: "init", config: initConfig });
+      : JSON.stringify(initObject);
 
     const doConnect = () => {
       connect({
@@ -313,6 +361,8 @@ export default function Home() {
     useCustomInit,
     customInitPayload,
     connect,
+    protocol,
+    sendJson,
     setStatusMessage,
     appendLog,
   ]);
@@ -372,7 +422,7 @@ export default function Home() {
         const end = Math.min(offset + chunkSize, float32Data.length);
         const chunk = float32Data.slice(offset, end);
         const pcm = floatTo16BitPCM(chunk);
-        sendBinary(pcm);
+        sendAudio(pcm);
         playPcmChunk(new Uint8Array(pcm));
         offset = end;
 
@@ -391,7 +441,7 @@ export default function Home() {
       fileStreamingRef.current = false;
       setIsStreamingPlayback(false);
     }
-  }, [selectedFile, isReady, parsedSampleRate, sendBinary, sendJson, setStatusMessage, appendLog, ensureAudioContext, resetPlayTime, playPcmChunk]);
+  }, [selectedFile, isReady, parsedSampleRate, sendAudio, sendJson, setStatusMessage, appendLog, ensureAudioContext, resetPlayTime, playPcmChunk]);
 
   // -- Send URL audio over WebSocket --
   const handleSendUrl = useCallback(async () => {
@@ -431,7 +481,7 @@ export default function Home() {
         const end = Math.min(offset + chunkSize, float32Data.length);
         const chunk = float32Data.slice(offset, end);
         const pcm = floatTo16BitPCM(chunk);
-        sendBinary(pcm);
+        sendAudio(pcm);
         playPcmChunk(new Uint8Array(pcm));
         offset = end;
         await new Promise((r) => setTimeout(r, 500));
@@ -447,7 +497,7 @@ export default function Home() {
       setIsBusy(false);
       setIsStreamingPlayback(false);
     }
-  }, [audioUrl, isReady, parsedSampleRate, sendBinary, sendJson, setStatusMessage, appendLog, ensureAudioContext, resetPlayTime, playPcmChunk]);
+  }, [audioUrl, isReady, parsedSampleRate, sendAudio, sendJson, setStatusMessage, appendLog, ensureAudioContext, resetPlayTime, playPcmChunk]);
 
   // -- HTTP file upload --
   const handleHttpTranscribe = useCallback(async () => {
@@ -841,7 +891,7 @@ console.log(result.transcript);`}
                 />
               </>
             )}
-            {isWs && (
+            {isWs && protocol.name === "default" && (
               <CodeBlock
                 title="WebSocket — Streaming STT"
                 language="javascript"
@@ -907,6 +957,75 @@ async function startMicrophone(ws, sampleRate) {
 
   source.connect(worklet);
   worklet.connect(ctx.destination);
+}`}
+              />
+            )}
+            {isWs && protocol.name === "soniox-direct" && (
+              <CodeBlock
+                title="WebSocket — Streaming STT (Soniox direct)"
+                language="javascript"
+                wide
+                code={`const MODEL = "${model}";
+const SAMPLE_RATE = ${parsedSampleRate};
+
+const ws = new WebSocket("${wsUrl}");
+ws.binaryType = "arraybuffer";
+
+ws.onopen = () => {
+  // 1. Initialize — Soniox expects a flat config object (no wrapper).
+  // The SLNG gateway adds api_key for you.
+  ws.send(JSON.stringify({
+    model: "stt-rt-v4",
+    audio_format: "pcm_s16le",
+    sample_rate: SAMPLE_RATE,
+    num_channels: 1,
+    language_hints: ["${language}"],
+    enable_endpoint_detection: true,
+    max_endpoint_delay_ms: 500,
+    enable_partial_results: true,
+  }));
+};
+
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  // Soniox sends { tokens: [{ text, is_final, ... }] }
+  if (Array.isArray(msg.tokens)) {
+    const finalText = msg.tokens.filter((t) => t.is_final).map((t) => t.text).join("");
+    const partialText = msg.tokens.filter((t) => !t.is_final).map((t) => t.text).join("");
+    if (finalText) console.log("Final:", finalText);
+    if (partialText) console.log("Partial:", partialText);
+  }
+};
+
+// Stream microphone audio as raw binary PCM16 frames (no JSON wrapping)
+async function startMicrophone(ws, sampleRate) {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { sampleRate, channelCount: 1 },
+  });
+  const ctx = new AudioContext({ sampleRate });
+  await ctx.audioWorklet.addModule("/audio-processor.js");
+  const source = ctx.createMediaStreamSource(stream);
+  const worklet = new AudioWorkletNode(ctx, "pcm-processor");
+
+  worklet.port.onmessage = (e) => {
+    const float32 = e.data;
+    const pcm16 = new ArrayBuffer(float32.length * 2);
+    const view = new DataView(pcm16);
+    for (let i = 0; i < float32.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32[i]));
+      view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+    ws.send(pcm16);
+  };
+
+  source.connect(worklet);
+  worklet.connect(ctx.destination);
+}
+
+// End-of-stream: send an empty string text frame, then close.
+function endStream(ws) {
+  ws.send("");
+  ws.close();
 }`}
               />
             )}

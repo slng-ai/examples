@@ -1,3 +1,5 @@
+import type { WireProtocol } from "./protocols";
+
 export type ModelOption = {
   value: string;
   label: string;
@@ -42,7 +44,7 @@ export const modelGroups: ModelGroup[] = [
   {
     label: "Soniox",
     options: [
-      { value: "soniox/speech-ai-real-time:v3", label: "soniox/speech-ai-real-time:v3" },
+      { value: "soniox/speech-ai:rt-v3", label: "soniox/speech-ai:rt-v3" },
     ],
   },
 ];
@@ -59,20 +61,10 @@ export function getWsUrl(model: string, useDirect: boolean): string {
 
 export function getDefaultInitPayload(
   model: string,
-  config: { sampleRate: number; encoding: string; language: string }
+  config: { sampleRate: number; language: string; encoding: string; enablePartials: boolean },
+  protocol: WireProtocol
 ): string {
-  return JSON.stringify(
-    {
-      type: "init",
-      config: {
-        encoding: config.encoding,
-        sample_rate: config.sampleRate,
-        language: config.language,
-      },
-    },
-    null,
-    2
-  );
+  return JSON.stringify(protocol.buildInitMessage(config), null, 2);
 }
 
 export const languageOptions = [
