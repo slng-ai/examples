@@ -64,7 +64,8 @@ export function getDefaultInitPayload(
   config: { sampleRate: number; language: string; encoding: string; enablePartials: boolean },
   protocol: WireProtocol
 ): string {
-  return JSON.stringify(protocol.buildInitMessage(config), null, 2);
+  const msg = protocol.buildInitMessage(config);
+  return msg === null ? "" : JSON.stringify(msg, null, 2);
 }
 
 export const languageOptions = [
@@ -80,3 +81,24 @@ export const languageOptions = [
   { value: "ar", label: "Arabic" },
   { value: "multi", label: "Multi-language (auto-detect)" },
 ];
+
+export const sarvamLanguageOptions = [
+  { value: "unknown", label: "Auto-detect" },
+  { value: "hi-IN", label: "Hindi (India)" },
+  { value: "en-IN", label: "English (India)" },
+  { value: "bn-IN", label: "Bengali (India)" },
+  { value: "gu-IN", label: "Gujarati (India)" },
+  { value: "kn-IN", label: "Kannada (India)" },
+  { value: "ml-IN", label: "Malayalam (India)" },
+  { value: "mr-IN", label: "Marathi (India)" },
+  { value: "od-IN", label: "Odia (India)" },
+  { value: "pa-IN", label: "Punjabi (India)" },
+  { value: "ta-IN", label: "Tamil (India)" },
+  { value: "te-IN", label: "Telugu (India)" },
+  { value: "ur-IN", label: "Urdu (India)" },
+];
+
+export function getLanguageOptions(model: string) {
+  if (model.startsWith("sarvam/")) return sarvamLanguageOptions;
+  return languageOptions;
+}
