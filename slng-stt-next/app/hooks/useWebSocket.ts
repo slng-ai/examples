@@ -43,21 +43,32 @@ export function useWebSocket(callbacks: WsCallbacks) {
       setIsConnected(true);
 
       ws.addEventListener("open", () => {
-        callbacksRef.current.onLog("WebSocket open. Sending init.");
+        const hasInit = initMessage.trim().length > 0;
+        callbacksRef.current.onLog(
+          hasInit ? "WebSocket open. Sending init." : "WebSocket open. (no init message for this protocol)"
+        );
 
         if (useProxy) {
           const envelope = JSON.stringify({
             api_key: apiKey,
             target: wsUrl,
-            payload: initMessage,
+            payload: hasInit ? initMessage : undefined,
           });
           ws.send(envelope);
-          callbacksRef.current.onLog(`Sent proxy envelope with init`);
-        } else {
-          if (initMessage) {
-            ws.send(initMessage);
-            callbacksRef.current.onLog(`Sent init: ${initMessage}`);
-          }
+          callbacksRef.current.onLog(
+            hasInit ? `Sent proxy envelope with init` : `Sent proxy envelope (no init)`
+          );
+        } else if (hasInit) {
+          ws.send(initMessage);
+          callbacksRef.current.onLog(`Sent init: ${initMessage}`);
+        }
+
+        if (!hasInit) {
+          // Protocols that put config in the URL query string don't ack the
+          // session — mark ready as soon as the socket is open.
+          setIsReady(true);
+          callbacksRef.current.onStatusChange("Ready. Start speaking or send audio.");
+          return;
         }
 
         // Some providers send a ready/metadata message, others don't.
@@ -98,9 +109,10 @@ export function useWebSocket(callbacks: WsCallbacks) {
         callbacksRef.current.onBinaryMessage(event.data as ArrayBuffer);
       });
 
-      ws.addEventListener("close", () => {
-        callbacksRef.current.onLog("WebSocket closed.");
-        callbacksRef.current.onStatusChange("Disconnected.");
+      ws.addEventListener("close", (event) => {
+        const detail = `code=${event.code}${event.reason ? ` reason="${event.reason}"` : ""}${event.wasClean ? "" : " (not clean)"}`;
+        callbacksRef.current.onLog(`WebSocket closed. ${detail}`);
+        callbacksRef.current.onStatusChange(`Disconnected. ${detail}`, !event.wasClean);
         setIsReady(false);
         setIsConnected(false);
         socketRef.current = null;

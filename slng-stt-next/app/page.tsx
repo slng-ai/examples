@@ -13,6 +13,7 @@ import { useMicrophone } from "./hooks/useMicrophone";
 import {
   modelGroups,
   languageOptions,
+  getLanguageOptions,
   getWsUrl,
   getDefaultInitPayload,
   BRIDGES_BASE_URL,
@@ -106,6 +107,9 @@ export default function Home() {
     // Try various response formats
     if (typeof payload.transcript === "string") return payload.transcript;
     if (typeof payload.text === "string") return payload.text;
+    // Sarvam: { type: "data", data: { transcript: "…" } }
+    const data = payload.data as Record<string, unknown> | undefined;
+    if (data && typeof data.transcript === "string") return data.transcript;
     // Deepgram nested format
     const channel = payload.channel as Record<string, unknown> | undefined;
     if (channel?.alternatives) {
@@ -131,6 +135,8 @@ export default function Home() {
     if (payload.speech_final === true) return true;
     const type = (payload.type as string)?.toLowerCase();
     if (type === "final_transcript") return true;
+    // Sarvam emits final transcripts only, under type "data"
+    if (type === "data") return true;
     // Soniox: every token in the array is final
     const tokens = payload.tokens as Array<Record<string, unknown>> | undefined;
     if (Array.isArray(tokens) && tokens.length > 0) {
@@ -145,6 +151,24 @@ export default function Home() {
       // Skip metadata/ready messages — not transcript data
       const msgType = (payload.type as string)?.toLowerCase();
       if (msgType === "metadata" || msgType === "ready") return;
+
+      // Sarvam: VAD events — just log them
+      if (msgType === "events") {
+        const data = payload.data as Record<string, unknown> | undefined;
+        const signal = typeof data?.signal_type === "string" ? data.signal_type : "?";
+        appendLog(`VAD: ${signal}`);
+        return;
+      }
+
+      // Sarvam / gateway error frames
+      if (msgType === "error") {
+        const data = payload.data as Record<string, unknown> | undefined;
+        const message = typeof data?.message === "string" ? data.message : "Unknown error";
+        const code = typeof data?.code === "string" ? ` (${data.code})` : "";
+        setStatusMessage(`Server error: ${message}${code}`, true);
+        appendLog(`Server error: ${message}${code}`);
+        return;
+      }
 
       // Soniox tokens[]: per-token final/partial split
       const tokens = payload.tokens as Array<Record<string, unknown>> | undefined;
@@ -209,12 +233,26 @@ export default function Home() {
     onStatusChange: setStatusMessage,
   });
 
-  // -- Audio sender (raw binary frames; kept as a helper for future protocol variants) --
+  // -- Audio sender. Some protocols (Sarvam) need each PCM chunk wrapped as JSON. --
   const sendAudio = useCallback(
     (pcmData: ArrayBuffer) => {
+      if (protocol.wrapAudio) {
+        const frame = protocol.wrapAudio(pcmData, {
+          sampleRate: parsedSampleRate,
+          language,
+          encoding,
+          enablePartials,
+        });
+        if (typeof frame === "string") {
+          sendJson(frame);
+        } else {
+          sendBinary(frame);
+        }
+        return;
+      }
       sendBinary(pcmData);
     },
-    [sendBinary]
+    [protocol, parsedSampleRate, language, encoding, enablePartials, sendBinary, sendJson]
   );
 
   // -- Microphone --
@@ -243,6 +281,11 @@ export default function Home() {
 
   // -- Auto-select language from model suffix --
   useEffect(() => {
+    // Sarvam uses BCP-47 codes; default to auto-detect when this model is picked.
+    if (model.startsWith("sarvam/")) {
+      setLanguage("unknown");
+      return;
+    }
     const match = model.match(/:[\w]+-(\w+)$/);
     if (match) {
       const suffix = match[1];
@@ -250,6 +293,14 @@ export default function Home() {
       if (lang) setLanguage(suffix);
     }
   }, [model]);
+
+  // -- Sarvam only exposes a direct-WS endpoint (no bridge channel). --
+  useEffect(() => {
+    if (model.startsWith("sarvam/") && !useDirectUrl) setUseDirectUrl(true);
+  }, [model, useDirectUrl]);
+
+  const isSarvam = model.startsWith("sarvam/");
+  const currentLanguageOptions = useMemo(() => getLanguageOptions(model), [model]);
 
   // -- Update custom init when config changes --
   useEffect(() => {
@@ -310,20 +361,28 @@ export default function Home() {
       return;
     }
 
-    const initObject = protocol.buildInitMessage({
+    const configInput = {
       sampleRate: parsedSampleRate,
       language,
       encoding,
       enablePartials,
-    });
+    };
+
+    const initObject = protocol.buildInitMessage(configInput);
 
     const initMessage = useCustomInit
       ? customInitPayload.trim()
-      : JSON.stringify(initObject);
+      : initObject === null
+        ? ""
+        : JSON.stringify(initObject);
+
+    const finalWsUrl = protocol.buildUrl
+      ? protocol.buildUrl(wsUrl.trim(), configInput)
+      : wsUrl.trim();
 
     const doConnect = () => {
       connect({
-        wsUrl: wsUrl.trim(),
+        wsUrl: finalWsUrl,
         apiKey: apiKey.trim(),
         useProxy,
         proxyUrl: proxyUrl.trim(),
@@ -372,7 +431,7 @@ export default function Home() {
     if (isRecording) {
       stopRecording();
       // Send finalize to tell the server we're done
-      sendJson(JSON.stringify({ type: "finalize" }));
+      sendJson(protocol.finalizeText ?? JSON.stringify({ type: "finalize" }));
       setStatusMessage("Recording stopped. Waiting for final transcript...");
       appendLog("Sent finalize signal.");
     } else {
@@ -391,6 +450,7 @@ export default function Home() {
     parsedSampleRate,
     setStatusMessage,
     appendLog,
+    protocol,
   ]);
 
   // -- Send file audio over WebSocket --
@@ -430,7 +490,7 @@ export default function Home() {
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      sendJson(JSON.stringify({ type: "finalize" }));
+      sendJson(protocol.finalizeText ?? JSON.stringify({ type: "finalize" }));
       appendLog("File streaming complete. Sent finalize.");
       setStatusMessage("File sent. Waiting for transcript...");
     } catch (err) {
@@ -441,7 +501,7 @@ export default function Home() {
       fileStreamingRef.current = false;
       setIsStreamingPlayback(false);
     }
-  }, [selectedFile, isReady, parsedSampleRate, sendAudio, sendJson, setStatusMessage, appendLog, ensureAudioContext, resetPlayTime, playPcmChunk]);
+  }, [selectedFile, isReady, parsedSampleRate, sendAudio, sendJson, setStatusMessage, appendLog, ensureAudioContext, resetPlayTime, playPcmChunk, protocol]);
 
   // -- Send URL audio over WebSocket --
   const handleSendUrl = useCallback(async () => {
@@ -487,7 +547,7 @@ export default function Home() {
         await new Promise((r) => setTimeout(r, 500));
       }
 
-      sendJson(JSON.stringify({ type: "finalize" }));
+      sendJson(protocol.finalizeText ?? JSON.stringify({ type: "finalize" }));
       appendLog("URL audio streaming complete. Sent finalize.");
       setStatusMessage("Audio sent. Waiting for transcript...");
     } catch (err) {
@@ -497,7 +557,7 @@ export default function Home() {
       setIsBusy(false);
       setIsStreamingPlayback(false);
     }
-  }, [audioUrl, isReady, parsedSampleRate, sendAudio, sendJson, setStatusMessage, appendLog, ensureAudioContext, resetPlayTime, playPcmChunk]);
+  }, [audioUrl, isReady, parsedSampleRate, sendAudio, sendJson, setStatusMessage, appendLog, ensureAudioContext, resetPlayTime, playPcmChunk, protocol]);
 
   // -- HTTP file upload --
   const handleHttpTranscribe = useCallback(async () => {
@@ -765,7 +825,7 @@ export default function Home() {
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
             >
-              {languageOptions.map((opt) => (
+              {currentLanguageOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -1029,6 +1089,68 @@ function endStream(ws) {
 }`}
               />
             )}
+            {isWs && protocol.name === "sarvam" && (
+              <CodeBlock
+                title="WebSocket — Streaming STT (Sarvam Saaras v3)"
+                language="javascript"
+                wide
+                code={`const MODEL = "${model}";
+const SAMPLE_RATE = ${parsedSampleRate};
+const LANGUAGE = "${language}"; // BCP-47 (e.g. "hi-IN") or "unknown" for auto-detect
+
+// 1. Session config goes in the URL query string — no init message.
+const url = new URL("${wsUrl}");
+url.searchParams.set("language-code", LANGUAGE);
+url.searchParams.set("mode", "transcribe");
+url.searchParams.set("sample_rate", String(SAMPLE_RATE));
+url.searchParams.set("input_audio_codec", "linear16");
+url.searchParams.set("vad_signals", "true");
+
+const ws = new WebSocket(url);
+
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  if (msg.type === "data")   console.log("Transcript:", msg.data.transcript);
+  if (msg.type === "events") console.log("VAD:", msg.data.signal_type);
+  if (msg.type === "error")  console.error("Error:", msg.data.message);
+};
+
+// 2. Audio frames are base64-encoded JSON — not raw binary.
+async function startMicrophone(ws, sampleRate) {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { sampleRate, channelCount: 1 },
+  });
+  const ctx = new AudioContext({ sampleRate });
+  await ctx.audioWorklet.addModule("/audio-processor.js");
+  const source = ctx.createMediaStreamSource(stream);
+  const worklet = new AudioWorkletNode(ctx, "pcm-processor");
+
+  worklet.port.onmessage = (e) => {
+    const float32 = e.data;
+    const pcm16 = new ArrayBuffer(float32.length * 2);
+    const view = new DataView(pcm16);
+    for (let i = 0; i < float32.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32[i]));
+      view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+    const bytes = new Uint8Array(pcm16);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    ws.send(JSON.stringify({
+      audio: { data: btoa(bin), sample_rate: sampleRate, encoding: "linear16" },
+    }));
+  };
+
+  source.connect(worklet);
+  worklet.connect(ctx.destination);
+}
+
+// 3. Mid-stream finalize: ask the server to flush the current utterance.
+function flush(ws) {
+  ws.send(JSON.stringify({ type: "flush" }));
+}`}
+              />
+            )}
           </div>
         </details>
 
@@ -1052,6 +1174,8 @@ function endStream(ws) {
                   id="urlPattern"
                   value={useDirectUrl ? "direct" : "bridge"}
                   onChange={(e) => setUseDirectUrl(e.target.value === "direct")}
+                  disabled={isSarvam}
+                  title={isSarvam ? "Sarvam Saaras v3 only has a direct WebSocket channel." : undefined}
                 >
                   <option value="bridge">Bridge (/v1/bridges/unmute/stt/)</option>
                   <option value="direct">Direct (/v1/stt/)</option>
