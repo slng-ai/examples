@@ -29,9 +29,9 @@ export function WaveformCanvas({
       resizeCanvas();
       const ctx = canvas!.getContext("2d");
       if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
       const w = canvas!.width;
       const h = canvas!.height;
-      const dpr = window.devicePixelRatio || 1;
 
       ctx.clearRect(0, 0, w, h);
       ctx.lineWidth = 2 * dpr;
@@ -98,8 +98,8 @@ export function WaveformCanvas({
   }, [analyserNode, isActive]);
 
   return (
-    <div className="waveform-wrap">
-      <canvas ref={canvasRef} />
+    <div className="mt-4 overflow-hidden rounded-lg border border-border bg-secondary">
+      <canvas ref={canvasRef} className="block h-20 w-full" />
     </div>
   );
 }

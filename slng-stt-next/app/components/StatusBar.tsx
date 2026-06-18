@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "./ui/lib/utils";
+
 type StatusBarProps = {
   status: string;
   isError: boolean;
@@ -13,18 +15,27 @@ export function StatusBar({
   isConnected,
   isReady,
 }: StatusBarProps) {
-  let barClass = "status-bar";
-  if (isError) {
-    barClass += " error";
-  } else if (isReady) {
-    barClass += " ready";
-  } else if (isConnected) {
-    barClass += " connected";
-  }
-
   return (
-    <div className={barClass}>
-      <span className="status-dot" />
+    <div
+      className={cn(
+        "mt-4 flex items-center gap-2 rounded-md px-3 py-2 text-sm",
+        isError
+          ? "bg-destructive/10 text-destructive"
+          : "bg-secondary text-muted-foreground"
+      )}
+    >
+      <span
+        className={cn(
+          "h-2 w-2 shrink-0 rounded-full",
+          isError
+            ? "bg-destructive"
+            : isReady
+              ? "bg-brand-yellow animate-slng-pulse"
+              : isConnected
+                ? "bg-brand-yellow"
+                : "bg-border"
+        )}
+      />
       <span>{status}</span>
     </div>
   );

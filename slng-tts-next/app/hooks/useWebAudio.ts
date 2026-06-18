@@ -56,10 +56,19 @@ export function useWebAudio(sampleRate: number) {
     nextPlayTimeRef.current = 0;
   }, []);
 
+  // Milliseconds of audio still scheduled to play. Because chunks are scheduled
+  // ahead of `currentTime`, playback continues after the server stops sending.
+  const getPlaybackRemainingMs = useCallback(() => {
+    const ctx = audioContextRef.current;
+    if (!ctx) return 0;
+    return Math.max(0, (nextPlayTimeRef.current - ctx.currentTime) * 1000);
+  }, []);
+
   return {
     playPcmChunk,
     closeAudio,
     resetPlayTime,
+    getPlaybackRemainingMs,
     analyserNodeRef,
     ensureAudioContext,
   };

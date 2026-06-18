@@ -1,11 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { ModeToggle } from "./components/ModeToggle";
 import { StatusBar } from "./components/StatusBar";
 import { WaveformCanvas } from "./components/WaveformCanvas";
 import { LogConsole } from "./components/LogConsole";
 import { CodeBlock } from "./components/CodeBlock";
+import { Button } from "./components/ui/button";
+import { Card } from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Textarea } from "./components/ui/textarea";
+import { cn } from "./components/ui/lib/utils";
 import { useSessionLog } from "./hooks/useSessionLog";
 import { useAudioBuffer } from "./hooks/useAudioBuffer";
 import { useWebAudio } from "./hooks/useWebAudio";
@@ -29,6 +36,51 @@ import {
   base64ToBytes,
   pcmToWav,
 } from "./lib/audio-utils";
+
+// Native <select> styled to match the design system's Select trigger. Native is
+// kept (rather than the Radix Select) so the demo stays copy-paste simple and
+// supports <optgroup> for the grouped model/voice lists.
+const selectClass =
+  "flex h-10 w-full appearance-none items-center rounded-md border border-input bg-background px-3 py-2 pr-8 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
+const detailsClass = "mt-4 border-t border-border pt-4";
+const summaryClass =
+  "cursor-pointer text-sm font-medium text-muted-foreground transition-colors hover:text-foreground";
+
+function SelectShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50" />
+    </div>
+  );
+}
+
+function FieldLabel({
+  htmlFor,
+  children,
+  linkHref,
+  linkText,
+}: {
+  htmlFor: string;
+  children: React.ReactNode;
+  linkHref: string;
+  linkText: string;
+}) {
+  return (
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <Label htmlFor={htmlFor}>{children}</Label>
+      <a
+        className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        href={linkHref}
+        target="_blank"
+        rel="noopener"
+      >
+        {linkText}
+      </a>
+    </div>
+  );
+}
 
 export default function Home() {
   // ── Mode ──
@@ -93,13 +145,22 @@ export default function Home() {
     const v = parseInt(sampleRate, 10);
     return Number.isFinite(v) && v > 0 ? v : 24000;
   }, [sampleRate]);
-  const { playPcmChunk, closeAudio, resetPlayTime, analyserNodeRef, ensureAudioContext } =
+  const { playPcmChunk, closeAudio, resetPlayTime, getPlaybackRemainingMs, analyserNodeRef, ensureAudioContext } =
     useWebAudio(parsedSampleRate);
   const { appendChunk, reset: resetAudioBuffer, scheduleFlush, markAudioEnd } =
     useAudioBuffer();
 
   // ── Audio chunk base64 accumulator (for JSON-based audio) ──
   const audioChunksBase64Ref = useRef("");
+
+  // Timer that keeps the waveform animating until scheduled playback ends.
+  const waveformStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearWaveformStopTimer = useCallback(() => {
+    if (waveformStopTimerRef.current) {
+      clearTimeout(waveformStopTimerRef.current);
+      waveformStopTimerRef.current = null;
+    }
+  }, []);
 
   // ── Status helpers ──
   const setStatusMessage = useCallback((message: string, isError = false) => {
@@ -157,7 +218,13 @@ export default function Home() {
       ) {
         if (audioFormat === "linear16") {
           appendLog("Stream complete (streaming via Web Audio API).");
-          setWaveformActive(false);
+          // Audio is scheduled ahead of real time, so keep the waveform
+          // animating until the buffered playback actually finishes.
+          clearWaveformStopTimer();
+          waveformStopTimerRef.current = setTimeout(() => {
+            setWaveformActive(false);
+            waveformStopTimerRef.current = null;
+          }, getPlaybackRemainingMs() + 250);
         } else {
           markAudioEnd();
           scheduleFlush(handleBufferFlush);
@@ -219,6 +286,8 @@ export default function Home() {
       handleBufferFlush,
       appendChunk,
       playPcmChunk,
+      clearWaveformStopTimer,
+      getPlaybackRemainingMs,
     ]
   );
 
@@ -301,6 +370,7 @@ export default function Home() {
         closeAudio();
       }
       setCurrentMode(mode);
+      clearWaveformStopTimer();
       setWaveformActive(false);
       if (mode === "rest") {
         setStatusMessage("Enter your API key and press Say it.");
@@ -308,7 +378,7 @@ export default function Home() {
         setStatusMessage("Enter your API key and connect.");
       }
     },
-    [isConnected, disconnect, closeAudio, setStatusMessage]
+    [isConnected, disconnect, closeAudio, setStatusMessage, clearWaveformStopTimer]
   );
 
   // ── Connect / Disconnect ──
@@ -316,6 +386,7 @@ export default function Home() {
     if (isConnected) {
       disconnect();
       closeAudio();
+      clearWaveformStopTimer();
       setWaveformActive(false);
       return;
     }
@@ -388,6 +459,7 @@ export default function Home() {
     connect,
     setStatusMessage,
     appendLog,
+    clearWaveformStopTimer,
   ]);
 
   // ── Send WS payload ──
@@ -425,6 +497,7 @@ export default function Home() {
     }
 
     appendLog(`Sending payload: ${payload}`);
+    clearWaveformStopTimer();
     resetAudioBuffer();
     resetPlayTime();
     setWaveformActive(false);
@@ -435,6 +508,7 @@ export default function Home() {
     text,
     payloadMode,
     customPayload,
+    clearWaveformStopTimer,
     appendLog,
     resetAudioBuffer,
     resetPlayTime,
@@ -556,125 +630,134 @@ export default function Home() {
   }, [model, restPayload]);
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <div className="brand">
-          <div className="logo">
+    <div className="mx-auto grid max-w-[920px] gap-5 px-4 py-9">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-yellow">
             <img
               src="https://www.datocms-assets.com/182222/1763142110-logo.svg"
               alt="SLNG"
+              className="h-7 w-7"
             />
           </div>
           <div>
-            <p className="brand-title">SLNG</p>
-            <span className="brand-subtitle">TTS Demo</span>
+            <p className="m-0 text-lg font-semibold uppercase tracking-wider">SLNG</p>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              TTS Demo
+            </span>
           </div>
         </div>
       </header>
 
-      <div className={`card ${isPlaying ? "is-playing" : ""}`}>
-        <h1>SLNG TTS Demo</h1>
-        <p>Type something and hear it instantly.</p>
+      <Card
+        className={cn(
+          "p-6 transition-shadow",
+          isPlaying && "ring-1 ring-brand-yellow/60"
+        )}
+      >
+        <h1 className="m-0 text-2xl font-semibold tracking-tight">SLNG TTS Demo</h1>
+        <p className="mb-5 mt-1 text-sm text-muted-foreground">
+          Type something and hear it instantly.
+        </p>
 
         <ModeToggle currentMode={currentMode} onModeChange={handleModeChange} disableRest={isWsOnlyModel(model)} />
 
-        <label htmlFor="textInput">Text to synthesize</label>
-        <textarea
+        <Label htmlFor="textInput" className="mb-2 mt-5 block">
+          Text to synthesize
+        </Label>
+        <Textarea
           id="textInput"
           ref={textAreaRef}
+          className="min-h-[120px]"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Try: Welcome to SLNG."
         />
 
-        <div className="prompt-chips">
+        <div className="mt-3 flex flex-wrap gap-2">
           {promptSuggestions.map((suggestion) => (
-            <button
+            <Button
               key={suggestion.label}
-              className="chip"
+              variant="outline"
+              size="sm"
+              className="rounded-full"
               type="button"
               onClick={() => handleChipClick(suggestion)}
             >
               {suggestion.label}
-            </button>
+            </Button>
           ))}
         </div>
 
         {/* Model / Voice selectors */}
-        <div className="model-row">
-          <div className="field">
-            <label htmlFor="modelSelect">
+        <div className="mt-5 flex flex-wrap gap-3">
+          <div className="flex-1 basis-[280px]">
+            <FieldLabel
+              htmlFor="modelSelect"
+              linkHref="https://docs.slng.ai/models"
+              linkText="Discover models →"
+            >
               Model
-              <a
-                className="model-link"
-                href="https://docs.slng.ai/models"
-                target="_blank"
-                rel="noopener"
+            </FieldLabel>
+            <SelectShell>
+              <select
+                id="modelSelect"
+                className={selectClass}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
               >
-                Discover models &rarr;
-              </a>
-            </label>
-            <select
-              id="modelSelect"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            >
-              {modelGroups.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+                {modelGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </SelectShell>
           </div>
-          <div className="field">
-            <label htmlFor="voiceSelect">
-              Voice
-              <a
-                className="model-link"
-                href={voiceDocsUrl}
-                target="_blank"
-                rel="noopener"
-              >
-                Discover voices &rarr;
-              </a>
-            </label>
-            <select
-              id="voiceSelect"
-              value={voice}
-              onChange={(e) => setVoice(e.target.value)}
+          <div className="flex-1 basis-[280px]">
+            <FieldLabel
+              htmlFor="voiceSelect"
+              linkHref={voiceDocsUrl}
+              linkText="Discover voices →"
             >
-              {voiceGroups.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+              Voice
+            </FieldLabel>
+            <SelectShell>
+              <select
+                id="voiceSelect"
+                className={selectClass}
+                value={voice}
+                onChange={(e) => setVoice(e.target.value)}
+              >
+                {voiceGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </SelectShell>
           </div>
         </div>
 
         {/* Connect row */}
-        <div className="connect-row">
-          <div className="api-field">
-            <label htmlFor="apiKeyInput">
+        <div className="mt-5 flex flex-wrap items-end gap-3">
+          <div className="flex-1 basis-[280px]">
+            <FieldLabel
+              htmlFor="apiKeyInput"
+              linkHref="https://app.slng.ai"
+              linkText="Get API key →"
+            >
               API Key
-              <a
-                className="model-link"
-                href="https://app.slng.ai"
-                target="_blank"
-                rel="noopener"
-              >
-                Get API key &rarr;
-              </a>
-            </label>
-            <input
+            </FieldLabel>
+            <Input
               id="apiKeyInput"
               type="password"
               placeholder="Paste your SLNG API key"
@@ -683,27 +766,21 @@ export default function Home() {
               onChange={(e) => setApiKey(e.target.value)}
             />
           </div>
-          <div className="btn-group">
+          <div className="flex shrink-0 gap-2">
             {isWs && (
-              <button
-                type="button"
-                className={`secondary ${isConnected ? "" : ""}`}
-                onClick={handleConnect}
-              >
+              <Button type="button" variant="secondary" onClick={handleConnect}>
                 {isConnected ? "Disconnect" : "Connect"}
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
-              className={`hero-button ${isBusy ? "is-loading" : ""} ${
-                isSendDisabled ? "is-disabled" : ""
-              }`}
-              onClick={handleSend}
-              disabled={isSendDisabled}
-            >
-              <span className="pulse" aria-hidden="true"></span>
+            <Button type="button" onClick={handleSend} disabled={isSendDisabled}>
+              {!isSendDisabled && (
+                <span
+                  aria-hidden="true"
+                  className="h-2.5 w-2.5 rounded-full bg-brand-yellow animate-slng-pulse"
+                />
+              )}
               {isBusy ? "Generating..." : "Say it"}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -717,8 +794,8 @@ export default function Home() {
 
         {/* REST: audio player */}
         {!isWs && (
-          <div className="audio-wrap">
-            <audio ref={audioRef} controls />
+          <div className="mt-4">
+            <audio ref={audioRef} controls className="w-full" />
           </div>
         )}
 
@@ -734,9 +811,9 @@ export default function Home() {
         <LogConsole entries={entries} onClear={clearLog} />
 
         {/* How to implement — mode-aware */}
-        <details>
-          <summary>How to implement</summary>
-          <div className="code-samples">
+        <details className={detailsClass}>
+          <summary className={summaryClass}>How to implement</summary>
+          <div className="mt-3 grid grid-cols-1 gap-3.5 md:grid-cols-2">
             {!isWs && (
               <>
                 <CodeBlock
@@ -849,90 +926,104 @@ ws.onmessage = (event) => {
 
         {/* Advanced settings (WS only) */}
         {isWs && (
-          <details>
-            <summary>Advanced settings</summary>
-            <div className="row" style={{ marginTop: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="wsUrlInput">WebSocket URL</label>
-                <input
+          <details className={detailsClass}>
+            <summary className={summaryClass}>Advanced settings</summary>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="flex-1 basis-[280px]">
+                <Label htmlFor="wsUrlInput" className="mb-2 block">
+                  WebSocket URL
+                </Label>
+                <Input
                   id="wsUrlInput"
                   type="text"
                   value={wsUrl}
                   onChange={(e) => setWsUrl(e.target.value)}
                 />
               </div>
-              <div style={{ flex: "0 0 200px", alignSelf: "flex-end" }}>
-                <label htmlFor="urlPattern">URL pattern</label>
-                <select
-                  id="urlPattern"
-                  value={useDirectUrl ? "direct" : "bridge"}
-                  onChange={(e) => setUseDirectUrl(e.target.value === "direct")}
-                >
-                  <option value="bridge">Bridge (/v1/bridges/unmute/tts/)</option>
-                  <option value="direct">Direct (/v1/tts/)</option>
-                </select>
+              <div className="basis-[200px]">
+                <Label htmlFor="urlPattern" className="mb-2 block">
+                  URL pattern
+                </Label>
+                <SelectShell>
+                  <select
+                    id="urlPattern"
+                    className={selectClass}
+                    value={useDirectUrl ? "direct" : "bridge"}
+                    onChange={(e) => setUseDirectUrl(e.target.value === "direct")}
+                  >
+                    <option value="bridge">Bridge (/v1/bridges/unmute/tts/)</option>
+                    <option value="direct">Direct (/v1/tts/)</option>
+                  </select>
+                </SelectShell>
               </div>
             </div>
 
-            <div className="row">
-              <div>
-                <label htmlFor="proxyUrlInput">Proxy WebSocket URL</label>
-                <input
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="flex-1 basis-[280px]">
+                <Label htmlFor="proxyUrlInput" className="mb-2 block">
+                  Proxy WebSocket URL
+                </Label>
+                <Input
                   id="proxyUrlInput"
                   type="text"
                   value={proxyUrl}
                   onChange={(e) => setProxyUrl(e.target.value)}
                 />
               </div>
-              <div style={{ flex: "0 0 180px", alignSelf: "flex-end" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={useProxy}
-                    onChange={(e) => setUseProxy(e.target.checked)}
-                  />
-                  Use proxy
-                </label>
-              </div>
+              <label className="flex h-10 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={useProxy}
+                  onChange={(e) => setUseProxy(e.target.checked)}
+                />
+                Use proxy
+              </label>
             </div>
 
-            <div className="row">
-              <div>
-                <label htmlFor="payloadMode">Payload mode</label>
-                <select
-                  id="payloadMode"
-                  value={payloadMode}
-                  onChange={(e) =>
-                    setPayloadMode(e.target.value as "text" | "custom")
-                  }
-                >
-                  <option value="text">{`{"text":"..."}`}</option>
-                  <option value="custom">Raw JSON (below)</option>
-                </select>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <div className="flex-1 basis-[180px]">
+                <Label htmlFor="payloadMode" className="mb-2 block">
+                  Payload mode
+                </Label>
+                <SelectShell>
+                  <select
+                    id="payloadMode"
+                    className={selectClass}
+                    value={payloadMode}
+                    onChange={(e) =>
+                      setPayloadMode(e.target.value as "text" | "custom")
+                    }
+                  >
+                    <option value="text">{`{"text":"..."}`}</option>
+                    <option value="custom">Raw JSON (below)</option>
+                  </select>
+                </SelectShell>
               </div>
-              <div>
-                <label htmlFor="audioFormat">Audio format</label>
-                <select
-                  id="audioFormat"
-                  value={audioFormat}
-                  onChange={(e) =>
-                    setAudioFormat(e.target.value as AudioFormat)
-                  }
-                >
-                  <option value="mp3">MP3</option>
-                  <option value="wav">WAV</option>
-                  <option value="linear16">Linear16 (PCM)</option>
-                </select>
+              <div className="flex-1 basis-[180px]">
+                <Label htmlFor="audioFormat" className="mb-2 block">
+                  Audio format
+                </Label>
+                <SelectShell>
+                  <select
+                    id="audioFormat"
+                    className={selectClass}
+                    value={audioFormat}
+                    onChange={(e) =>
+                      setAudioFormat(e.target.value as AudioFormat)
+                    }
+                  >
+                    <option value="mp3">MP3</option>
+                    <option value="wav">WAV</option>
+                    <option value="linear16">Linear16 (PCM)</option>
+                  </select>
+                </SelectShell>
               </div>
-              <div>
-                <label htmlFor="sampleRateInput">Sample rate (PCM)</label>
-                <input
+              <div className="flex-1 basis-[180px]">
+                <Label htmlFor="sampleRateInput" className="mb-2 block">
+                  Sample rate (PCM)
+                </Label>
+                <Input
                   id="sampleRateInput"
                   type="text"
                   value={sampleRate}
@@ -942,41 +1033,34 @@ ws.onmessage = (event) => {
               </div>
             </div>
 
-            <label htmlFor="customPayload" style={{ marginTop: 12 }}>
+            <Label htmlFor="customPayload" className="mb-2 mt-3 block">
               Custom JSON payload
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id="customPayload"
+              className="font-mono"
               rows={4}
               spellCheck={false}
               value={customPayload}
               onChange={(e) => setCustomPayload(e.target.value)}
             />
 
-            <div className="row">
-              <div style={{ flex: "0 0 180px", alignSelf: "flex-end" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={useCustomInit}
-                    onChange={(e) => setUseCustomInit(e.target.checked)}
-                  />
-                  Use custom init
-                </label>
-              </div>
-            </div>
-
-            <label htmlFor="customInitPayload" style={{ marginTop: 12 }}>
-              Custom init JSON
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                checked={useCustomInit}
+                onChange={(e) => setUseCustomInit(e.target.checked)}
+              />
+              Use custom init
             </label>
-            <textarea
+
+            <Label htmlFor="customInitPayload" className="mb-2 mt-3 block">
+              Custom init JSON
+            </Label>
+            <Textarea
               id="customInitPayload"
+              className="font-mono"
               rows={4}
               spellCheck={false}
               value={customInitPayload}
@@ -984,12 +1068,13 @@ ws.onmessage = (event) => {
             />
           </details>
         )}
+      </Card>
 
-      </div>
-
-      <footer className="page-footer">
-        <div className="footer-stack">
-          <p className="h100-saans-bold">Unmuted.</p>
+      <footer className="flex flex-col items-center gap-4 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+        <div className="flex flex-col items-center gap-4">
+          <p className="m-0 text-5xl font-extrabold tracking-tight text-foreground md:text-6xl">
+            Unmuted.
+          </p>
           <a href="https://slng.ai" target="_blank" rel="noopener">
             <img
               alt="SLNG"
@@ -1003,7 +1088,7 @@ ws.onmessage = (event) => {
           </a>
         </div>
         <a
-          className="footer-link"
+          className="font-semibold text-foreground hover:underline"
           href="https://app.slng.ai"
           target="_blank"
           rel="noopener"
