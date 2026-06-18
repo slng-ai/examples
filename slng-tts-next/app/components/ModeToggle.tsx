@@ -1,5 +1,7 @@
 "use client";
 
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+
 type ModeToggleProps = {
   currentMode: "rest" | "websocket";
   onModeChange: (mode: "rest" | "websocket") => void;
@@ -8,23 +10,20 @@ type ModeToggleProps = {
 
 export function ModeToggle({ currentMode, onModeChange, disableRest }: ModeToggleProps) {
   return (
-    <div className="mode-toggle">
-      <button
-        type="button"
-        className={currentMode === "rest" ? "active" : ""}
-        onClick={() => onModeChange("rest")}
-        disabled={disableRest}
-        title={disableRest ? "This model supports WebSocket only" : undefined}
-      >
-        REST
-      </button>
-      <button
-        type="button"
-        className={currentMode === "websocket" ? "active" : ""}
-        onClick={() => onModeChange("websocket")}
-      >
-        WebSocket
-      </button>
-    </div>
+    <Tabs
+      value={currentMode}
+      onValueChange={(v) => onModeChange(v as "rest" | "websocket")}
+    >
+      <TabsList>
+        <TabsTrigger
+          value="rest"
+          disabled={disableRest}
+          title={disableRest ? "This model supports WebSocket only" : undefined}
+        >
+          REST
+        </TabsTrigger>
+        <TabsTrigger value="websocket">WebSocket</TabsTrigger>
+      </TabsList>
+    </Tabs>
   );
 }

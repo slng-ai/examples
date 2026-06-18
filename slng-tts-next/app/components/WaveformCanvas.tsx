@@ -98,8 +98,8 @@ export function WaveformCanvas({
   }, [analyserNode, isActive]);
 
   return (
-    <div className="waveform-wrap">
-      <canvas ref={canvasRef} />
+    <div className="mt-4 overflow-hidden rounded-lg border border-border bg-secondary">
+      <canvas ref={canvasRef} className="block h-20 w-full" />
     </div>
   );
 }

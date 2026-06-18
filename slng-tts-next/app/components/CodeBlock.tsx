@@ -20,12 +20,20 @@ export function CodeBlock({ code, language, title, wide }: CodeBlockProps) {
   };
 
   return (
-    <div className={`code-card ${wide ? "wide" : ""}`}>
-      <div className="code-card-header">
-        {title && <h3>{title}</h3>}
+    <div
+      className={`overflow-hidden rounded-md border border-border bg-secondary p-3 ${
+        wide ? "md:col-span-2" : ""
+      }`}
+    >
+      <div className="mb-2 flex items-center justify-between">
+        {title && (
+          <h3 className="m-0 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            {title}
+          </h3>
+        )}
         <button
           type="button"
-          className="copy-btn"
+          className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           onClick={handleCopy}
         >
           {copied ? "Copied!" : "Copy"}
@@ -33,7 +41,10 @@ export function CodeBlock({ code, language, title, wide }: CodeBlockProps) {
       </div>
       <Highlight theme={themes.nightOwl} code={code.trim()} language={language}>
         {({ style, tokens, getLineProps, getTokenProps }) => (
-          <pre style={{ ...style, margin: 0, padding: "12px", borderRadius: "var(--radius)", fontSize: "0.75rem", lineHeight: 1.5, overflowX: "auto" }}>
+          <pre
+            className="m-0 overflow-x-auto rounded-md p-3 font-mono text-xs leading-relaxed"
+            style={style}
+          >
             {tokens.map((line, i) => (
               <div key={i} {...getLineProps({ line })}>
                 {line.map((token, key) => (
