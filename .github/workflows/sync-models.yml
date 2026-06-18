@@ -1,0 +1,61 @@
+name: Sync model catalog
+
+# Keeps the example apps' model/voice/language lists in sync with the SLNG
+# catalog API. On a schedule it regenerates the committed `models.generated.ts`
+# files and opens a PR when they change; on pull requests it fails if the
+# committed files are stale (or were hand-edited).
+
+on:
+  schedule:
+    # Daily at 06:00 UTC.
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "slng-tts-next/app/lib/models.generated.ts"
+      - "slng-stt-next/app/lib/models.generated.ts"
+      - "scripts/sync-models.ts"
+      - "package.json"
+      - ".github/workflows/sync-models.yml"
+
+jobs:
+  # On PRs: ensure the committed generated files match the script's output.
+  check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run sync-models:check
+
+  # On schedule / manual dispatch: regenerate and open a PR if anything changed.
+  sync:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run sync-models
+      - name: Open PR on changes
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: sync model catalog"
+          title: "chore: sync model catalog"
+          body: |
+            Automated update of `models.generated.ts` from the SLNG catalog API
+            (`GET /v1/catalog/models`). Review the diff to see which models,
+            voices, or languages changed.
+          branch: chore/sync-model-catalog
+          delete-branch: true
+          add-paths: |
+            slng-tts-next/app/lib/models.generated.ts
+            slng-stt-next/app/lib/models.generated.ts

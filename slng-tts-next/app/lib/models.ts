@@ -1,3 +1,5 @@
+import { modelGroups, voicesByModel } from "./models.generated";
+
 export type ModelOption = {
   value: string;
   label: string;
@@ -26,215 +28,42 @@ export type PromptSuggestion = {
   voice?: string;
 };
 
-export const modelGroups: ModelGroup[] = [
-  {
-    label: "Deepgram",
-    options: [{ value: "deepgram/aura:2", label: "deepgram/aura:2" }],
-  },
-  {
-    label: "Sarvam",
-    options: [{ value: "sarvam/bulbul:v3", label: "sarvam/bulbul:v3" }],
-  },
-  {
-    label: "SLNG / Deepgram",
-    options: [
-      { value: "slng/deepgram/aura:2", label: "slng/deepgram/aura:2" },
-      { value: "slng/deepgram/aura:2-en", label: "slng/deepgram/aura:2-en" },
-      { value: "slng/deepgram/aura:2-es", label: "slng/deepgram/aura:2-es" },
-    ],
-  },
-  {
-    label: "SLNG / Rime",
-    options: [
-      { value: "slng/rime/arcana:3-en", label: "slng/rime/arcana:3-en" },
-      { value: "slng/rime/arcana:3-es", label: "slng/rime/arcana:3-es" },
-      { value: "slng/rime/arcana:3-fr", label: "slng/rime/arcana:3-fr" },
-      { value: "slng/rime/arcana:3-hi", label: "slng/rime/arcana:3-hi" },
-      { value: "slng/rime/arcana:ar", label: "slng/rime/arcana:ar" },
-      { value: "slng/rime/arcana:de", label: "slng/rime/arcana:de" },
-      { value: "slng/rime/arcana:en", label: "slng/rime/arcana:en" },
-      { value: "slng/rime/arcana:es", label: "slng/rime/arcana:es" },
-      { value: "slng/rime/arcana:fr", label: "slng/rime/arcana:fr" },
-    ],
-  },
-  {
-    label: "Canopy Labs",
-    options: [{ value: "slng/canopylabs/orpheus:en", label: "slng/canopylabs/orpheus:en" }],
-  },
-  {
-    label: "KugelAudio",
-    options: [
-      { value: "kugelaudio/kugel:1-turbo", label: "kugelaudio/kugel:1-turbo", wsOnly: true },
-      { value: "kugelaudio/kugel:1", label: "kugelaudio/kugel:1", wsOnly: true },
-    ],
-  },
-];
+// Model list and per-model voices are generated from the SLNG catalog API.
+// Run `npm run sync-models` from the repo root to refresh.
+export { modelGroups, voicesByModel };
 
-// ── Voice groups per provider ──
-
-const deepgramAuraVoices: VoiceGroup[] = [
-  {
-    label: "English",
-    options: [
-      { value: "aura-2-thalia-en", label: "Thalia (feminine)" },
-      { value: "aura-2-andromeda-en", label: "Andromeda (feminine)" },
-      { value: "aura-2-helena-en", label: "Helena (feminine)" },
-      { value: "aura-2-apollo-en", label: "Apollo (masculine)" },
-      { value: "aura-2-arcas-en", label: "Arcas (masculine)" },
-      { value: "aura-2-aries-en", label: "Aries (masculine)" },
-    ],
-  },
-  {
-    label: "Spanish",
-    options: [
-      { value: "aura-2-nestor-es", label: "Nestor (masculine)" },
-      { value: "aura-2-valentina-es", label: "Valentina (feminine)" },
-      { value: "aura-2-alvaro-es", label: "Alvaro (masculine)" },
-      { value: "aura-2-carina-es", label: "Carina (feminine)" },
-      { value: "aura-2-celeste-es", label: "Celeste (feminine)" },
-      { value: "aura-2-diana-es", label: "Diana (feminine)" },
-      { value: "aura-2-estrella-es", label: "Estrella (feminine)" },
-      { value: "aura-2-hector-es", label: "Hector (masculine)" },
-      { value: "aura-2-javier-es", label: "Javier (masculine)" },
-      { value: "aura-2-leon-es", label: "Leon (masculine)" },
-      { value: "aura-2-selena-es", label: "Selena (feminine)" },
-      { value: "aura-2-sirio-es", label: "Sirio (masculine)" },
-      { value: "aura-2-solana-es", label: "Solana (feminine)" },
-    ],
-  },
-];
-
-const rimeArcanaVoices: VoiceGroup[] = [
-  {
-    label: "English",
-    options: [
-      { value: "astra", label: "Astra (feminine)" },
-      { value: "luna", label: "Luna (feminine)" },
-      { value: "lyra", label: "Lyra (feminine)" },
-      { value: "celeste", label: "Celeste (feminine)" },
-      { value: "estelle", label: "Estelle (feminine)" },
-      { value: "vashti", label: "Vashti (feminine)" },
-      { value: "arcade", label: "Arcade (masculine)" },
-      { value: "albion", label: "Albion (masculine)" },
-      { value: "sirius", label: "Sirius (masculine)" },
-      { value: "bond", label: "Bond (masculine)" },
-      { value: "eliphas", label: "Eliphas (masculine)" },
-    ],
-  },
-  {
-    label: "Spanish",
-    options: [
-      { value: "aurelio", label: "Aurelio (masculine)" },
-      { value: "celestino", label: "Celestino (masculine)" },
-      { value: "lark", label: "Lark" },
-      { value: "luz", label: "Luz (feminine)" },
-      { value: "mar", label: "Mar" },
-      { value: "nova", label: "Nova (feminine)" },
-      { value: "pola", label: "Pola (feminine)" },
-      { value: "seraphina", label: "Seraphina (feminine)" },
-    ],
-  },
-  {
-    label: "French",
-    options: [
-      { value: "amarante", label: "Amarante (feminine)" },
-      { value: "aurelie", label: "Aurelie (feminine)" },
-      { value: "destin", label: "Destin (masculine)" },
-      { value: "morel_marianne", label: "Morel Marianne (feminine)" },
-      { value: "solstice", label: "Solstice (feminine)" },
-    ],
-  },
-  {
-    label: "Hindi",
-    options: [
-      { value: "anaya", label: "Anaya (feminine)" },
-      { value: "anil", label: "Anil (masculine)" },
-      { value: "arya", label: "Arya (feminine)" },
-    ],
-  },
-  {
-    label: "German",
-    options: [
-      { value: "alfhild", label: "Alfhild (feminine)" },
-      { value: "baldur", label: "Baldur (masculine)" },
-      { value: "kumara", label: "Kumara" },
-      { value: "liesel", label: "Liesel (feminine)" },
-      { value: "lorelei", label: "Lorelei (feminine)" },
-      { value: "runa", label: "Runa (feminine)" },
-    ],
-  },
-  {
-    label: "Arabic",
-    options: [
-      { value: "batin", label: "Batin (masculine)" },
-      { value: "layla", label: "Layla (feminine)" },
-      { value: "qadir", label: "Qadir (masculine)" },
-      { value: "sakina", label: "Sakina (feminine)" },
-    ],
-  },
-];
-
-const sarvamVoices: VoiceGroup[] = [
-  {
-    label: "Default",
-    options: [
-      { value: "default", label: "Default voice" },
-    ],
-  },
-];
-
-const canopyLabsVoices: VoiceGroup[] = [
-  {
-    label: "Default",
-    options: [
-      { value: "default", label: "Default voice" },
-    ],
-  },
-];
-
-const kugelAudioVoices: VoiceGroup[] = [
-  {
-    label: "Default",
-    options: [{ value: "268", label: "Voice 268 (default)" }],
-  },
+// Fallback when the catalog reports no voices for a model (e.g. the provider
+// uses a single default voice or exposes voices only via the `speaker` field).
+const DEFAULT_VOICE_GROUPS: VoiceGroup[] = [
+  { label: "Default", options: [{ value: "default", label: "Default voice" }] },
 ];
 
 /**
- * Returns the voice groups appropriate for the given model,
+ * Docs URL for a model's voices, by provider. Kept hand-maintained because the
+ * catalog API does not expose per-provider voice documentation links.
+ */
+function voicesDocsUrl(model: string): string {
+  if (model.includes("rime") || model.includes("arcana")) {
+    return "https://docs.slng.ai/voices/rime-arcana";
+  }
+  if (model.includes("deepgram") || model.includes("aura")) {
+    return "https://docs.slng.ai/voices/deepgram-aura";
+  }
+  return "https://docs.slng.ai/voices";
+}
+
+/**
+ * Returns the voice groups appropriate for the given model (from the catalog),
  * and the docs URL for that provider's voices.
  */
 export function getVoicesForModel(model: string): {
   groups: VoiceGroup[];
   docsUrl: string;
 } {
-  if (model.includes("rime") || model.includes("arcana")) {
-    return {
-      groups: rimeArcanaVoices,
-      docsUrl: "https://docs.slng.ai/voices/rime-arcana",
-    };
-  }
-  if (model.includes("sarvam")) {
-    return {
-      groups: sarvamVoices,
-      docsUrl: "https://docs.slng.ai/voices",
-    };
-  }
-  if (model.includes("canopy") || model.includes("orpheus")) {
-    return {
-      groups: canopyLabsVoices,
-      docsUrl: "https://docs.slng.ai/voices",
-    };
-  }
-  if (model.includes("kugelaudio") || model.includes("kugel")) {
-    return {
-      groups: kugelAudioVoices,
-      docsUrl: "https://docs.slng.ai/voices",
-    };
-  }
-  // Default: Deepgram Aura
+  const groups = voicesByModel[model];
   return {
-    groups: deepgramAuraVoices,
-    docsUrl: "https://docs.slng.ai/voices/deepgram-aura",
+    groups: groups && groups.length > 0 ? groups : DEFAULT_VOICE_GROUPS,
+    docsUrl: voicesDocsUrl(model),
   };
 }
 
@@ -250,22 +79,22 @@ export const promptSuggestions: PromptSuggestion[] = [
   {
     label: "Octopus facts",
     prompt:
-      "The octopus has three hearts, nine brains, and blue blood. Two of its hearts pump blood to the gills, while the third pumps it to the rest of the body. When an octopus swims, the heart that delivers blood to the body actually stops beating, which is why these creatures prefer crawling to swimming \u2014 it\u2019s less exhausting.",
-    model: "slng/deepgram/aura:2",
+      "The octopus has three hearts, nine brains, and blue blood. Two of its hearts pump blood to the gills, while the third pumps it to the rest of the body. When an octopus swims, the heart that delivers blood to the body actually stops beating, which is why these creatures prefer crawling to swimming — it’s less exhausting.",
+    model: "slng/deepgram/aura:2-en",
     voice: "aura-2-thalia-en",
   },
   {
     label: "The Great Emu War",
     prompt:
       "In 1932, Australia lost a war against emus. The Royal Australian Artillery was deployed with Lewis guns to cull the emu population in Western Australia. Despite firing thousands of rounds, the emus proved surprisingly resilient and elusive. The military withdrew after a few weeks, and the emus were declared the winners of what became known as the Great Emu War.",
-    model: "slng/deepgram/aura:2",
+    model: "slng/deepgram/aura:2-en",
     voice: "aura-2-apollo-en",
   },
   {
     label: "Immortal honey",
     prompt:
-      "Honey never spoils. Archaeologists have found pots of honey in ancient Egyptian tombs that are over three thousand years old and still perfectly edible. Honey\u2019s longevity comes from its low moisture content and acidic pH, which create an inhospitable environment for bacteria and microorganisms.",
-    model: "slng/deepgram/aura:2",
+      "Honey never spoils. Archaeologists have found pots of honey in ancient Egyptian tombs that are over three thousand years old and still perfectly edible. Honey’s longevity comes from its low moisture content and acidic pH, which create an inhospitable environment for bacteria and microorganisms.",
+    model: "slng/deepgram/aura:2-en",
     voice: "aura-2-andromeda-en",
   },
   {
@@ -279,7 +108,7 @@ export const promptSuggestions: PromptSuggestion[] = [
     label: "Pirate tale",
     prompt:
       "Arrr matey! Gather round and hear the tale of Blackbeard, the most fearsome pirate to ever sail the seven seas. Edward Teach, as he was known before taking to piracy, would weave slow-burning fuses into his enormous black beard before battle, wreathing his face in smoke and flame. His terrifying appearance alone was often enough to make merchant ships surrender without a fight.",
-    model: "slng/deepgram/aura:2",
+    model: "slng/deepgram/aura:2-en",
     voice: "aura-2-arcas-en",
   },
 ];
@@ -287,8 +116,16 @@ export const promptSuggestions: PromptSuggestion[] = [
 export const BRIDGES_BASE_URL = "wss://api.slng.ai/v1/bridges/unmute/tts/";
 export const DIRECT_WS_BASE_URL = "wss://api.slng.ai/v1/tts/";
 export const REST_BASE_URL = "https://api.slng.ai/v1/bridges/unmute/tts/";
-export const DEFAULT_MODEL = "slng/deepgram/aura:2";
-export const DEFAULT_VOICE = "aura-2-thalia-en";
+
+// Preferred starting model/voice. Falls back to the first available option so
+// the selector always has a valid value even as the catalog changes.
+const PREFERRED_MODEL = "slng/deepgram/aura:2-en";
+const allModelValues = modelGroups.flatMap((g) => g.options.map((o) => o.value));
+
+export const DEFAULT_MODEL: string = allModelValues.includes(PREFERRED_MODEL)
+  ? PREFERRED_MODEL
+  : allModelValues[0] ?? "";
+export const DEFAULT_VOICE: string = getDefaultVoiceForModel(DEFAULT_MODEL);
 
 export function isWsOnlyModel(model: string): boolean {
   return modelGroups
