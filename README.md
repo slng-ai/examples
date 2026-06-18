@@ -1,7 +1,11 @@
-<div align="center">
-  <img src="https://docs.slng.ai/logo/dark.svg" alt="SLNG" width="120" />
-  <h1>SLNG Examples</h1>
-</div>
+<p align="center">
+  <a href="https://slng.ai">
+    <img src="https://www.datocms-assets.com/182222/1763142213-logo-lg.svg" alt="slng.ai" height="64" />
+  </a>
+</p>
+
+<h1>SLNG Examples</h1>
+
 
 ## What is SLNG?
 [SLNG](https://slng.ai) is a developer platform for real-time voice and speech experiences. Use it to build text-to-speech, streaming audio, and voice interfaces with simple APIs and SDKs.
