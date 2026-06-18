@@ -1,0 +1,13 @@
+{
+  "name": "slng-examples",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SLNG examples monorepo — shared tooling to keep model lists in sync with the catalog API.",
+  "scripts": {
+    "sync-models": "tsx scripts/sync-models.ts",
+    "sync-models:check": "tsx scripts/sync-models.ts --check"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}
