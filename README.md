@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://docs.slng.ai/images/logo.svg" alt="SLNG" width="120" />
+  <img src="https://docs.slng.ai/logo/dark.svg" alt="SLNG" width="120" />
   <h1>SLNG Examples</h1>
 </div>
 
@@ -26,7 +26,8 @@ git checkout main
 Replace the URL with your fork if needed.
 
 ## Current examples
-- `slng-tts-next` - Next.js text-to-speech starter.
+- [`slng-tts-next`](./slng-tts-next) - Next.js text-to-speech demo with REST and WebSocket streaming across multiple voice providers. [Live demo](https://examples-gbcy.onrender.com)
+- [`slng-stt-next`](./slng-stt-next) - Next.js speech-to-text demo with real-time WebSocket and HTTP transcription across multiple providers. [Live demo](https://slng-stt-demo.onrender.com)
 
 ## Open in GitHub Codespaces
 Open this repo directly in Codespaces:
