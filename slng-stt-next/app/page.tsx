@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { StatusBar } from "./components/StatusBar";
 import { WaveformCanvas } from "./components/WaveformCanvas";
 import { LogConsole } from "./components/LogConsole";
 import { CodeBlock } from "./components/CodeBlock";
 import { TranscriptDisplay } from "./components/TranscriptDisplay";
+import { Button } from "./components/ui/button";
+import { Card } from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { Textarea } from "./components/ui/textarea";
+import { cn } from "./components/ui/lib/utils";
 import { useSessionLog } from "./hooks/useSessionLog";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useWebAudio } from "./hooks/useWebAudio";
@@ -26,6 +34,50 @@ import { getProtocol } from "./lib/protocols";
 
 type InputSource = "microphone" | "file" | "url";
 type ConnectionMode = "websocket" | "http";
+
+// Native <select> styled to match the design system's Select trigger. Native is
+// kept so the demo stays copy-paste simple and supports <optgroup>.
+const selectClass =
+  "flex h-10 w-full appearance-none items-center rounded-md border border-input bg-background px-3 py-2 pr-8 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+
+const detailsClass = "mt-4 border-t border-border pt-4";
+const summaryClass =
+  "cursor-pointer text-sm font-medium text-muted-foreground transition-colors hover:text-foreground";
+
+function SelectShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50" />
+    </div>
+  );
+}
+
+function FieldLabel({
+  htmlFor,
+  children,
+  linkHref,
+  linkText,
+}: {
+  htmlFor: string;
+  children: React.ReactNode;
+  linkHref: string;
+  linkText: string;
+}) {
+  return (
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <Label htmlFor={htmlFor}>{children}</Label>
+      <a
+        className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        href={linkHref}
+        target="_blank"
+        rel="noopener"
+      >
+        {linkText}
+      </a>
+    </div>
+  );
+}
 
 export default function Home() {
   // -- Mode --
@@ -682,81 +734,77 @@ export default function Home() {
   }, [model]);
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <div className="brand">
-          <div className="logo">
+    <div className="mx-auto grid max-w-[920px] gap-5 px-4 py-9">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-xl bg-brand-yellow">
             <img
               src="https://www.datocms-assets.com/182222/1763142110-logo.svg"
               alt="SLNG"
+              className="h-7 w-7"
             />
           </div>
           <div>
-            <p className="brand-title">SLNG</p>
-            <span className="brand-subtitle">STT Demo</span>
+            <p className="m-0 text-lg font-semibold uppercase tracking-wider">SLNG</p>
+            <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              STT Demo
+            </span>
           </div>
         </div>
       </header>
 
-      <div className={`card ${isRecording ? "is-recording" : ""}`}>
-        <h1>SLNG STT Demo</h1>
-        <p>Speak, upload a file, or paste a URL to transcribe.</p>
+      <Card
+        className={cn(
+          "p-6 transition-shadow",
+          isRecording && "ring-1 ring-brand-yellow/60"
+        )}
+      >
+        <h1 className="m-0 text-2xl font-semibold tracking-tight">SLNG STT Demo</h1>
+        <p className="mb-5 mt-1 text-sm text-muted-foreground">
+          Speak, upload a file, or paste a URL to transcribe.
+        </p>
 
         {/* Connection mode toggle */}
-        <div className="mode-toggle">
-          <button
-            type="button"
-            className={connectionMode === "websocket" ? "active" : ""}
-            onClick={() => handleModeChange("websocket")}
-          >
-            WebSocket
-          </button>
-          <button
-            type="button"
-            className={connectionMode === "http" ? "active" : ""}
-            onClick={() => handleModeChange("http")}
-          >
-            HTTP
-          </button>
-        </div>
+        <Tabs
+          value={connectionMode}
+          onValueChange={(v) => handleModeChange(v as ConnectionMode)}
+        >
+          <TabsList>
+            <TabsTrigger value="websocket">WebSocket</TabsTrigger>
+            <TabsTrigger value="http">HTTP</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {/* Input source toggle (WS only — HTTP is always file) */}
         {isWs && (
-          <div className="input-source-toggle">
-            <button
-              type="button"
-              className={inputSource === "microphone" ? "active" : ""}
-              onClick={() => setInputSource("microphone")}
+          <div className="mt-3">
+            <Tabs
+              value={inputSource}
+              onValueChange={(v) => setInputSource(v as InputSource)}
             >
-              Microphone
-            </button>
-            <button
-              type="button"
-              className={inputSource === "file" ? "active" : ""}
-              onClick={() => setInputSource("file")}
-            >
-              File
-            </button>
-            <button
-              type="button"
-              className={inputSource === "url" ? "active" : ""}
-              onClick={() => setInputSource("url")}
-            >
-              URL
-            </button>
+              <TabsList>
+                <TabsTrigger value="microphone">Microphone</TabsTrigger>
+                <TabsTrigger value="file">File</TabsTrigger>
+                <TabsTrigger value="url">URL</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         )}
 
         {/* File input */}
         {(inputSource === "file" || connectionMode === "http") && (
           <div
-            className={`file-input-area ${selectedFile ? "has-file" : ""}`}
+            className={cn(
+              "mt-4 cursor-pointer rounded-lg border border-dashed border-border bg-secondary px-4 py-8 text-center text-sm text-muted-foreground transition-colors hover:border-foreground/40",
+              selectedFile && "border-brand-yellow/60"
+            )}
             onClick={() => fileInputRef.current?.click()}
           >
             <input
               ref={fileInputRef}
               type="file"
               accept="audio/*"
+              className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0] || null;
                 setSelectedFile(file);
@@ -765,20 +813,22 @@ export default function Home() {
             />
             {selectedFile ? (
               <>
-                <p>Selected file:</p>
-                <p className="file-name">{selectedFile.name}</p>
+                <p className="m-0">Selected file:</p>
+                <p className="m-0 mt-1 font-medium text-foreground">{selectedFile.name}</p>
               </>
             ) : (
-              <p>Click to select an audio file (MP3, WAV, FLAC, OGG, WebM)</p>
+              <p className="m-0">Click to select an audio file (MP3, WAV, FLAC, OGG, WebM)</p>
             )}
           </div>
         )}
 
         {/* URL input */}
         {inputSource === "url" && isWs && (
-          <div className="url-input-row">
-            <label htmlFor="audioUrlInput">Audio URL</label>
-            <input
+          <div className="mt-4">
+            <Label htmlFor="audioUrlInput" className="mb-2 block">
+              Audio URL
+            </Label>
+            <Input
               id="audioUrlInput"
               type="url"
               placeholder="https://example.com/audio.wav"
@@ -789,66 +839,66 @@ export default function Home() {
         )}
 
         {/* Model / Language selectors */}
-        <div className="model-row">
-          <div className="field">
-            <label htmlFor="modelSelect">
+        <div className="mt-5 flex flex-wrap gap-3">
+          <div className="flex-1 basis-[280px]">
+            <FieldLabel
+              htmlFor="modelSelect"
+              linkHref="https://docs.slng.ai/models"
+              linkText="Discover models →"
+            >
               Model
-              <a
-                className="model-link"
-                href="https://docs.slng.ai/models"
-                target="_blank"
-                rel="noopener"
+            </FieldLabel>
+            <SelectShell>
+              <select
+                id="modelSelect"
+                className={selectClass}
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
               >
-                Discover models &rarr;
-              </a>
-            </label>
-            <select
-              id="modelSelect"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            >
-              {modelGroups.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+                {modelGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </SelectShell>
           </div>
-          <div className="field">
-            <label htmlFor="languageSelect">Language</label>
-            <select
-              id="languageSelect"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              {currentLanguageOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+          <div className="flex-1 basis-[280px]">
+            <Label htmlFor="languageSelect" className="mb-2 block">
+              Language
+            </Label>
+            <SelectShell>
+              <select
+                id="languageSelect"
+                className={selectClass}
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                {currentLanguageOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </SelectShell>
           </div>
         </div>
 
         {/* Connect row */}
-        <div className="connect-row">
-          <div className="api-field">
-            <label htmlFor="apiKeyInput">
+        <div className="mt-5 flex flex-wrap items-end gap-3">
+          <div className="flex-1 basis-[280px]">
+            <FieldLabel
+              htmlFor="apiKeyInput"
+              linkHref="https://app.slng.ai"
+              linkText="Get API key →"
+            >
               API Key
-              <a
-                className="model-link"
-                href="https://app.slng.ai"
-                target="_blank"
-                rel="noopener"
-              >
-                Get API key &rarr;
-              </a>
-            </label>
-            <input
+            </FieldLabel>
+            <Input
               id="apiKeyInput"
               type="password"
               placeholder="Paste your SLNG API key"
@@ -857,27 +907,29 @@ export default function Home() {
               onChange={(e) => setApiKey(e.target.value)}
             />
           </div>
-          <div className="btn-group">
+          <div className="flex shrink-0 gap-2">
             {isWs && (
-              <button
-                type="button"
-                className="secondary"
-                onClick={handleConnect}
-              >
+              <Button type="button" variant="secondary" onClick={handleConnect}>
                 {isConnected ? "Disconnect" : "Connect"}
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
-              className={`hero-button ${isBusy ? "is-loading" : ""} ${
-                isRecording ? "is-recording" : ""
-              } ${isActionDisabled ? "is-disabled" : ""}`}
               onClick={handleAction}
               disabled={isActionDisabled}
+              className={cn(isRecording && "bg-destructive text-destructive-foreground hover:bg-destructive/90")}
             >
-              <span className="pulse" aria-hidden="true"></span>
+              {!isActionDisabled && (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "h-2.5 w-2.5 rounded-full animate-slng-pulse",
+                    isRecording ? "bg-destructive-foreground" : "bg-brand-yellow"
+                  )}
+                />
+              )}
               {actionButtonLabel}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -916,9 +968,9 @@ export default function Home() {
         <LogConsole entries={entries} onClear={clearLog} />
 
         {/* How to implement */}
-        <details>
-          <summary>How to implement</summary>
-          <div className="code-samples">
+        <details className={detailsClass}>
+          <summary className={summaryClass}>How to implement</summary>
+          <div className="mt-3 grid grid-cols-1 gap-3.5 md:grid-cols-2">
             {!isWs && (
               <>
                 <CodeBlock
@@ -1156,76 +1208,85 @@ function flush(ws) {
 
         {/* Advanced settings (WS only) */}
         {isWs && (
-          <details>
-            <summary>Advanced settings</summary>
-            <div className="row" style={{ marginTop: 12 }}>
-              <div style={{ flex: 1 }}>
-                <label htmlFor="wsUrlInput">WebSocket URL</label>
-                <input
+          <details className={detailsClass}>
+            <summary className={summaryClass}>Advanced settings</summary>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="flex-1 basis-[280px]">
+                <Label htmlFor="wsUrlInput" className="mb-2 block">
+                  WebSocket URL
+                </Label>
+                <Input
                   id="wsUrlInput"
                   type="text"
                   value={wsUrl}
                   onChange={(e) => setWsUrl(e.target.value)}
                 />
               </div>
-              <div style={{ flex: "0 0 200px", alignSelf: "flex-end" }}>
-                <label htmlFor="urlPattern">URL pattern</label>
-                <select
-                  id="urlPattern"
-                  value={useDirectUrl ? "direct" : "bridge"}
-                  onChange={(e) => setUseDirectUrl(e.target.value === "direct")}
-                  disabled={isSarvam}
-                  title={isSarvam ? "Sarvam Saaras v3 only has a direct WebSocket channel." : undefined}
-                >
-                  <option value="bridge">Bridge (/v1/bridges/unmute/stt/)</option>
-                  <option value="direct">Direct (/v1/stt/)</option>
-                </select>
+              <div className="basis-[200px]">
+                <Label htmlFor="urlPattern" className="mb-2 block">
+                  URL pattern
+                </Label>
+                <SelectShell>
+                  <select
+                    id="urlPattern"
+                    className={cn(selectClass, "disabled:cursor-not-allowed disabled:opacity-50")}
+                    value={useDirectUrl ? "direct" : "bridge"}
+                    onChange={(e) => setUseDirectUrl(e.target.value === "direct")}
+                    disabled={isSarvam}
+                    title={isSarvam ? "Sarvam Saaras v3 only has a direct WebSocket channel." : undefined}
+                  >
+                    <option value="bridge">Bridge (/v1/bridges/unmute/stt/)</option>
+                    <option value="direct">Direct (/v1/stt/)</option>
+                  </select>
+                </SelectShell>
               </div>
             </div>
 
-            <div className="row">
-              <div>
-                <label htmlFor="proxyUrlInput">Proxy WebSocket URL</label>
-                <input
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="flex-1 basis-[280px]">
+                <Label htmlFor="proxyUrlInput" className="mb-2 block">
+                  Proxy WebSocket URL
+                </Label>
+                <Input
                   id="proxyUrlInput"
                   type="text"
                   value={proxyUrl}
                   onChange={(e) => setProxyUrl(e.target.value)}
                 />
               </div>
-              <div style={{ flex: "0 0 180px", alignSelf: "flex-end" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={useProxy}
-                    onChange={(e) => setUseProxy(e.target.checked)}
-                  />
-                  Use proxy
-                </label>
-              </div>
+              <label className="flex h-10 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={useProxy}
+                  onChange={(e) => setUseProxy(e.target.checked)}
+                />
+                Use proxy
+              </label>
             </div>
 
-            <div className="row">
-              <div>
-                <label htmlFor="encodingSelect">Encoding</label>
-                <select
-                  id="encodingSelect"
-                  value={encoding}
-                  onChange={(e) => setEncoding(e.target.value)}
-                >
-                  <option value="linear16">Linear16 (PCM)</option>
-                  <option value="pcm_mulaw">PCM mu-law</option>
-                </select>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="flex-1 basis-[180px]">
+                <Label htmlFor="encodingSelect" className="mb-2 block">
+                  Encoding
+                </Label>
+                <SelectShell>
+                  <select
+                    id="encodingSelect"
+                    className={selectClass}
+                    value={encoding}
+                    onChange={(e) => setEncoding(e.target.value)}
+                  >
+                    <option value="linear16">Linear16 (PCM)</option>
+                    <option value="pcm_mulaw">PCM mu-law</option>
+                  </select>
+                </SelectShell>
               </div>
-              <div>
-                <label htmlFor="sampleRateInput">Sample rate</label>
-                <input
+              <div className="flex-1 basis-[180px]">
+                <Label htmlFor="sampleRateInput" className="mb-2 block">
+                  Sample rate
+                </Label>
+                <Input
                   id="sampleRateInput"
                   type="text"
                   value={sampleRate}
@@ -1233,48 +1294,33 @@ function flush(ws) {
                   onChange={(e) => setSampleRate(e.target.value)}
                 />
               </div>
-              <div style={{ flex: "0 0 180px", alignSelf: "flex-end" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={enablePartials}
-                    onChange={(e) => setEnablePartials(e.target.checked)}
-                  />
-                  Partial transcripts
-                </label>
-              </div>
+              <label className="flex h-10 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={enablePartials}
+                  onChange={(e) => setEnablePartials(e.target.checked)}
+                />
+                Partial transcripts
+              </label>
             </div>
 
-            <div className="row">
-              <div style={{ flex: "0 0 180px", alignSelf: "flex-end" }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={useCustomInit}
-                    onChange={(e) => setUseCustomInit(e.target.checked)}
-                  />
-                  Use custom init
-                </label>
-              </div>
-            </div>
-
-            <label htmlFor="customInitPayload" style={{ marginTop: 12 }}>
-              Custom init JSON
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                checked={useCustomInit}
+                onChange={(e) => setUseCustomInit(e.target.checked)}
+              />
+              Use custom init
             </label>
-            <textarea
+
+            <Label htmlFor="customInitPayload" className="mb-2 mt-3 block">
+              Custom init JSON
+            </Label>
+            <Textarea
               id="customInitPayload"
+              className="font-mono"
               rows={6}
               spellCheck={false}
               value={customInitPayload}
@@ -1282,11 +1328,13 @@ function flush(ws) {
             />
           </details>
         )}
-      </div>
+      </Card>
 
-      <footer className="page-footer">
-        <div className="footer-stack">
-          <p className="h100-saans-bold">Unmuted.</p>
+      <footer className="flex flex-col items-center gap-4 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+        <div className="flex flex-col items-center gap-4">
+          <p className="m-0 text-5xl font-extrabold tracking-tight text-foreground md:text-6xl">
+            Unmuted.
+          </p>
           <a href="https://slng.ai" target="_blank" rel="noopener">
             <img
               alt="SLNG"
@@ -1300,7 +1348,7 @@ function flush(ws) {
           </a>
         </div>
         <a
-          className="footer-link"
+          className="font-semibold text-foreground hover:underline"
           href="https://app.slng.ai"
           target="_blank"
           rel="noopener"

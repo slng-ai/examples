@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronRight, Trash2 } from "lucide-react";
+import { cn } from "./ui/lib/utils";
 import type { LogEntry } from "../hooks/useSessionLog";
 
 type LogConsoleProps = {
@@ -12,45 +14,38 @@ export function LogConsole({ entries, onClear }: LogConsoleProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="log-section">
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="mt-3">
+      <div className="flex items-center gap-2">
         <button
-          className={`log-toggle ${isOpen ? "open" : ""}`}
           type="button"
+          className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           onClick={() => setIsOpen((prev) => !prev)}
         >
-          <span className="arrow">&#9654;</span> Log
+          <ChevronRight
+            className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-90")}
+          />
+          Log
         </button>
         {isOpen && entries.length > 0 && onClear && (
           <button
             type="button"
             onClick={onClear}
             title="Clear logs"
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              padding: 2,
-              lineHeight: 1,
-            }}
+            className="text-muted-foreground transition-colors hover:text-foreground"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--foreground, #333)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6" />
-              <path d="M14 11v6" />
-              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-            </svg>
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
-      <div className={`log ${isOpen ? "open" : ""}`}>
-        {entries.map((entry, i) => (
-          <div key={i}>
-            {entry.timestamp} {entry.message}
-          </div>
-        ))}
-      </div>
+      {isOpen && (
+        <div className="mt-1.5 max-h-40 overflow-y-auto whitespace-pre-wrap break-all rounded-md border border-border bg-secondary p-3 font-mono text-xs text-muted-foreground">
+          {entries.map((entry, i) => (
+            <div key={i}>
+              {entry.timestamp} {entry.message}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
