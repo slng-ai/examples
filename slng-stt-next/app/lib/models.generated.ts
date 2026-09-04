@@ -21,8 +21,8 @@ export const modelGroups: ModelGroup[] = [
         "label": "slng/deepgram/nova:3-hi"
       },
       {
-        "value": "slng/deepgram/nova:3-in",
-        "label": "slng/deepgram/nova:3-in"
+        "value": "slng/deepgram/nova:3-id",
+        "label": "slng/deepgram/nova:3-id"
       },
       {
         "value": "slng/deepgram/nova:3-kn",
@@ -43,6 +43,19 @@ export const modelGroups: ModelGroup[] = [
     ]
   },
   {
+    "label": "SLNG / Speechmatics",
+    "options": [
+      {
+        "value": "slng/speechmatics/batch:15.0.0",
+        "label": "slng/speechmatics/batch:15.0.0"
+      },
+      {
+        "value": "slng/speechmatics/realtime:v2",
+        "label": "slng/speechmatics/realtime:v2"
+      }
+    ]
+  },
+  {
     "label": "Deepgram",
     "options": [
       {
@@ -52,6 +65,15 @@ export const modelGroups: ModelGroup[] = [
       {
         "value": "deepgram/nova:3-medical",
         "label": "deepgram/nova:3-medical"
+      }
+    ]
+  },
+  {
+    "label": "Gradium",
+    "options": [
+      {
+        "value": "gradium/stt:default",
+        "label": "gradium/stt:default"
       }
     ]
   },
@@ -83,12 +105,38 @@ export const modelGroups: ModelGroup[] = [
       {
         "value": "soniox/speech-ai:rt-v4",
         "label": "soniox/speech-ai:rt-v4"
+      },
+      {
+        "value": "soniox/speech-ai:rt-v5",
+        "label": "soniox/speech-ai:rt-v5"
       }
     ]
   }
 ];
 
 export const languagesByModel: Record<string, LanguageOption[]> = {
+  "gradium/stt:default": [
+    {
+      "value": "de",
+      "label": "German"
+    },
+    {
+      "value": "en",
+      "label": "English"
+    },
+    {
+      "value": "fr",
+      "label": "French"
+    },
+    {
+      "value": "it",
+      "label": "Italian"
+    },
+    {
+      "value": "pt",
+      "label": "Portuguese"
+    }
+  ],
   "deepgram/nova:3": [
     {
       "value": "ar",
@@ -279,7 +327,7 @@ export const languagesByModel: Record<string, LanguageOption[]> = {
       "label": "Chinese"
     }
   ],
-  "slng/deepgram/nova:3-in": [
+  "slng/deepgram/nova:3-id": [
     {
       "value": "id",
       "label": "Indonesian"
@@ -327,10 +375,6 @@ export const languagesByModel: Record<string, LanguageOption[]> = {
       "label": "Assamese"
     },
     {
-      "value": "bm",
-      "label": "Bambara"
-    },
-    {
       "value": "bn",
       "label": "Bengali"
     },
@@ -351,6 +395,10 @@ export const languagesByModel: Record<string, LanguageOption[]> = {
       "label": "Kannada"
     },
     {
+      "value": "ks",
+      "label": "KS"
+    },
+    {
       "value": "ml",
       "label": "Malayalam"
     },
@@ -363,12 +411,252 @@ export const languagesByModel: Record<string, LanguageOption[]> = {
       "label": "Nepali"
     },
     {
+      "value": "sa",
+      "label": "Sanskrit"
+    },
+    {
+      "value": "sd",
+      "label": "SD"
+    },
+    {
+      "value": "ta",
+      "label": "Tamil"
+    },
+    {
       "value": "te",
       "label": "Telugu"
     },
     {
       "value": "ur",
       "label": "Urdu"
+    }
+  ],
+  "slng/speechmatics/batch:15.0.0": [
+    {
+      "value": "ar",
+      "label": "Arabic"
+    },
+    {
+      "value": "ba",
+      "label": "Bashkir"
+    },
+    {
+      "value": "be",
+      "label": "Belarusian"
+    },
+    {
+      "value": "bg",
+      "label": "Bulgarian"
+    },
+    {
+      "value": "bn",
+      "label": "Bengali"
+    },
+    {
+      "value": "ca",
+      "label": "Catalan"
+    },
+    {
+      "value": "cs",
+      "label": "Czech"
+    },
+    {
+      "value": "cy",
+      "label": "Welsh"
+    },
+    {
+      "value": "da",
+      "label": "Danish"
+    },
+    {
+      "value": "de",
+      "label": "German"
+    },
+    {
+      "value": "el",
+      "label": "Greek"
+    },
+    {
+      "value": "en",
+      "label": "English"
+    },
+    {
+      "value": "eo",
+      "label": "Esperanto"
+    },
+    {
+      "value": "es",
+      "label": "Spanish"
+    },
+    {
+      "value": "et",
+      "label": "Estonian"
+    },
+    {
+      "value": "eu",
+      "label": "Basque"
+    },
+    {
+      "value": "fa",
+      "label": "Persian"
+    },
+    {
+      "value": "fi",
+      "label": "Finnish"
+    },
+    {
+      "value": "fr",
+      "label": "French"
+    },
+    {
+      "value": "ga",
+      "label": "Irish"
+    },
+    {
+      "value": "gl",
+      "label": "Galician"
+    },
+    {
+      "value": "he",
+      "label": "Hebrew"
+    },
+    {
+      "value": "hi",
+      "label": "Hindi"
+    },
+    {
+      "value": "hr",
+      "label": "Croatian"
+    },
+    {
+      "value": "hu",
+      "label": "Hungarian"
+    },
+    {
+      "value": "ia",
+      "label": "Interlingua"
+    },
+    {
+      "value": "id",
+      "label": "Indonesian"
+    },
+    {
+      "value": "it",
+      "label": "Italian"
+    },
+    {
+      "value": "ja",
+      "label": "Japanese"
+    },
+    {
+      "value": "ko",
+      "label": "Korean"
+    },
+    {
+      "value": "lt",
+      "label": "Lithuanian"
+    },
+    {
+      "value": "lv",
+      "label": "Latvian"
+    },
+    {
+      "value": "mn",
+      "label": "Mongolian"
+    },
+    {
+      "value": "mr",
+      "label": "Marathi"
+    },
+    {
+      "value": "ms",
+      "label": "Malay"
+    },
+    {
+      "value": "mt",
+      "label": "Maltese"
+    },
+    {
+      "value": "nl",
+      "label": "Dutch"
+    },
+    {
+      "value": "no",
+      "label": "Norwegian"
+    },
+    {
+      "value": "pl",
+      "label": "Polish"
+    },
+    {
+      "value": "pt",
+      "label": "Portuguese"
+    },
+    {
+      "value": "ro",
+      "label": "Romanian"
+    },
+    {
+      "value": "ru",
+      "label": "Russian"
+    },
+    {
+      "value": "sk",
+      "label": "Slovak"
+    },
+    {
+      "value": "sl",
+      "label": "Slovenian"
+    },
+    {
+      "value": "sv",
+      "label": "Swedish"
+    },
+    {
+      "value": "sw",
+      "label": "Swahili"
+    },
+    {
+      "value": "ta",
+      "label": "Tamil"
+    },
+    {
+      "value": "th",
+      "label": "Thai"
+    },
+    {
+      "value": "tl",
+      "label": "Tagalog"
+    },
+    {
+      "value": "tr",
+      "label": "Turkish"
+    },
+    {
+      "value": "ug",
+      "label": "Uyghur"
+    },
+    {
+      "value": "uk",
+      "label": "Ukrainian"
+    },
+    {
+      "value": "ur",
+      "label": "Urdu"
+    },
+    {
+      "value": "vi",
+      "label": "Vietnamese"
+    },
+    {
+      "value": "zh",
+      "label": "Chinese"
+    }
+  ],
+  "slng/speechmatics/realtime:v2": [
+    {
+      "value": "id",
+      "label": "Indonesian"
     }
   ],
   "soniox/speech-ai:rt-v3": [
@@ -803,6 +1091,220 @@ export const languagesByModel: Record<string, LanguageOption[]> = {
       "label": "Chinese"
     }
   ],
+  "soniox/speech-ai:rt-v5": [
+    {
+      "value": "am",
+      "label": "Amharic"
+    },
+    {
+      "value": "ar",
+      "label": "Arabic"
+    },
+    {
+      "value": "ay",
+      "label": "Aymara"
+    },
+    {
+      "value": "az",
+      "label": "Azerbaijani"
+    },
+    {
+      "value": "be",
+      "label": "Belarusian"
+    },
+    {
+      "value": "bg",
+      "label": "Bulgarian"
+    },
+    {
+      "value": "bn",
+      "label": "Bengali"
+    },
+    {
+      "value": "bs",
+      "label": "Bosnian"
+    },
+    {
+      "value": "ca",
+      "label": "Catalan"
+    },
+    {
+      "value": "co",
+      "label": "Corsican"
+    },
+    {
+      "value": "da",
+      "label": "Danish"
+    },
+    {
+      "value": "de",
+      "label": "German"
+    },
+    {
+      "value": "el",
+      "label": "Greek"
+    },
+    {
+      "value": "en",
+      "label": "English"
+    },
+    {
+      "value": "es",
+      "label": "Spanish"
+    },
+    {
+      "value": "et",
+      "label": "Estonian"
+    },
+    {
+      "value": "eu",
+      "label": "Basque"
+    },
+    {
+      "value": "fi",
+      "label": "Finnish"
+    },
+    {
+      "value": "fr",
+      "label": "French"
+    },
+    {
+      "value": "gl",
+      "label": "Galician"
+    },
+    {
+      "value": "gn",
+      "label": "Guarani"
+    },
+    {
+      "value": "he",
+      "label": "Hebrew"
+    },
+    {
+      "value": "hi",
+      "label": "Hindi"
+    },
+    {
+      "value": "hr",
+      "label": "Croatian"
+    },
+    {
+      "value": "id",
+      "label": "Indonesian"
+    },
+    {
+      "value": "it",
+      "label": "Italian"
+    },
+    {
+      "value": "ja",
+      "label": "Japanese"
+    },
+    {
+      "value": "ka",
+      "label": "Georgian"
+    },
+    {
+      "value": "kn",
+      "label": "Kannada"
+    },
+    {
+      "value": "ko",
+      "label": "Korean"
+    },
+    {
+      "value": "ku",
+      "label": "Kurdish"
+    },
+    {
+      "value": "lt",
+      "label": "Lithuanian"
+    },
+    {
+      "value": "lv",
+      "label": "Latvian"
+    },
+    {
+      "value": "mn",
+      "label": "Mongolian"
+    },
+    {
+      "value": "mr",
+      "label": "Marathi"
+    },
+    {
+      "value": "my",
+      "label": "Burmese"
+    },
+    {
+      "value": "ne",
+      "label": "Nepali"
+    },
+    {
+      "value": "nl",
+      "label": "Dutch"
+    },
+    {
+      "value": "no",
+      "label": "Norwegian"
+    },
+    {
+      "value": "pa",
+      "label": "Punjabi"
+    },
+    {
+      "value": "pl",
+      "label": "Polish"
+    },
+    {
+      "value": "pt",
+      "label": "Portuguese"
+    },
+    {
+      "value": "ro",
+      "label": "Romanian"
+    },
+    {
+      "value": "ru",
+      "label": "Russian"
+    },
+    {
+      "value": "sk",
+      "label": "Slovak"
+    },
+    {
+      "value": "sl",
+      "label": "Slovenian"
+    },
+    {
+      "value": "so",
+      "label": "Somali"
+    },
+    {
+      "value": "sv",
+      "label": "Swedish"
+    },
+    {
+      "value": "ta",
+      "label": "Tamil"
+    },
+    {
+      "value": "te",
+      "label": "Telugu"
+    },
+    {
+      "value": "uk",
+      "label": "Ukrainian"
+    },
+    {
+      "value": "vi",
+      "label": "Vietnamese"
+    },
+    {
+      "value": "zh",
+      "label": "Chinese"
+    }
+  ],
   "slng/deepgram/nova:3-hi": [
     {
       "value": "en",
@@ -841,8 +1343,8 @@ export const languageOptions: LanguageOption[] = [
     "label": "Azerbaijani"
   },
   {
-    "value": "bm",
-    "label": "Bambara"
+    "value": "ba",
+    "label": "Bashkir"
   },
   {
     "value": "eu",
@@ -901,6 +1403,10 @@ export const languageOptions: LanguageOption[] = [
     "label": "English"
   },
   {
+    "value": "eo",
+    "label": "Esperanto"
+  },
+  {
     "value": "et",
     "label": "Estonian"
   },
@@ -957,6 +1463,10 @@ export const languageOptions: LanguageOption[] = [
     "label": "Indonesian"
   },
   {
+    "value": "ia",
+    "label": "Interlingua"
+  },
+  {
     "value": "ga",
     "label": "Irish"
   },
@@ -979,6 +1489,10 @@ export const languageOptions: LanguageOption[] = [
   {
     "value": "ko",
     "label": "Korean"
+  },
+  {
+    "value": "ks",
+    "label": "KS"
   },
   {
     "value": "ku",
@@ -1011,6 +1525,10 @@ export const languageOptions: LanguageOption[] = [
   {
     "value": "ml",
     "label": "Malayalam"
+  },
+  {
+    "value": "mt",
+    "label": "Maltese"
   },
   {
     "value": "mr",
@@ -1055,6 +1573,10 @@ export const languageOptions: LanguageOption[] = [
   {
     "value": "sa",
     "label": "Sanskrit"
+  },
+  {
+    "value": "sd",
+    "label": "SD"
   },
   {
     "value": "sr",
@@ -1113,7 +1635,15 @@ export const languageOptions: LanguageOption[] = [
     "label": "Urdu"
   },
   {
+    "value": "ug",
+    "label": "Uyghur"
+  },
+  {
     "value": "vi",
     "label": "Vietnamese"
+  },
+  {
+    "value": "cy",
+    "label": "Welsh"
   }
 ];
