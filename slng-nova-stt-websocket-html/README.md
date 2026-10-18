@@ -54,7 +54,8 @@ In the UI:
 3. Use `ws://localhost:8787` for the proxy URL (or update if you change ports).
 
 If you run in an environment that supports custom WS headers, you can uncheck
-"Use proxy" and connect directly.
+"Use proxy" and connect directly. Browsers ignore those headers, so in a browser
+the Project ID is sent only through the proxy.
 
 ## API Call (What the App Sends)
 

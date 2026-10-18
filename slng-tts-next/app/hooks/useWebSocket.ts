@@ -94,9 +94,10 @@ export function useWebSocket(callbacks: WsCallbacks) {
         callbacksRef.current.onBinaryMessage(event.data as ArrayBuffer);
       });
 
-      ws.addEventListener("close", () => {
-        callbacksRef.current.onLog("WebSocket closed.");
-        callbacksRef.current.onStatusChange("Disconnected.");
+      ws.addEventListener("close", (event) => {
+        const detail = event.reason ? ` ${event.code}: ${event.reason}` : "";
+        callbacksRef.current.onLog(`WebSocket closed.${detail}`);
+        callbacksRef.current.onStatusChange(`Disconnected.${detail}`, !event.wasClean);
         setIsReady(false);
         setIsConnected(false);
         socketRef.current = null;

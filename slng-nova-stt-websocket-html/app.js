@@ -280,13 +280,8 @@ function handleJsonMessage(payload) {
   }
 }
 
-function createWebSocket(url, apiKey, projectId) {
-  const headers = apiKey
-    ? {
-        Authorization: `Bearer ${apiKey}`,
-        ...(projectId ? { "X-SLNG-Project-Id": projectId } : {}),
-      }
-    : null;
+function createWebSocket(url, apiKey) {
+  const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : null;
   if (!headers) {
     return new WebSocket(url);
   }
@@ -557,7 +552,7 @@ function connectSocket() {
   appendLog(`Connecting to ${wsUrl}`);
   resetTranscript();
 
-  socket = useProxy ? new WebSocket(wsUrl) : createWebSocket(wsUrl, apiKey, projectId);
+  socket = useProxy ? new WebSocket(wsUrl) : createWebSocket(wsUrl, apiKey);
   isConnected = true;
   updateButtons();
 
@@ -602,11 +597,12 @@ function connectSocket() {
   });
 
   socket.addEventListener("close", (event) => {
-    appendLog(`WebSocket closed (${event.code}${event.reason ? `: ${event.reason}` : ""}).`);
+    const detail = event.reason ? ` ${event.code}: ${event.reason}` : "";
+    appendLog(`WebSocket closed.${detail}`);
     if (isRecording) {
       stopRecording();
     }
-    setStatus("Disconnected.");
+    setStatus(`Disconnected.${detail}`, Boolean(event.reason));
     pendingAutoStart = null;
     closeSocket();
   });
