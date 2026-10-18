@@ -36,6 +36,10 @@ npm run dev
 
 Open http://localhost:3000 to use the demo.
 
+### Project ID (optional)
+
+SLNG API keys belong to your organization. The **Project ID** field picks the project that requests are billed and limited under: the demo sends it as the `X-SLNG-Project-Id` header (through the proxy for WebSocket mode). Copy the project UUID from the project's Settings page in the [dashboard](https://app.slng.ai). To prefill the field, copy `.env.example` to `.env.local` and set `SLNG_PROJECT_ID`. Leave it empty to use the key's default project.
+
 ### WebSocket Mode (optional)
 
 WebSocket streaming requires a proxy because browsers cannot set `Authorization` headers on WebSocket connections. To use WebSocket mode locally, start the proxy in a separate terminal:
@@ -71,6 +75,7 @@ POST https://api.slng.ai/v1/bridges/unmute/tts/{model}
 ```bash
 curl "https://api.slng.ai/v1/bridges/unmute/tts/slng/deepgram/aura:2" \
   -H "Authorization: Bearer $SLNG_API_KEY" \
+  -H "X-SLNG-Project-Id: $SLNG_PROJECT_ID" \
   -H "Content-Type: application/json" \
   -d '{"model": "aura-2-thalia-en", "text": "Hello world"}' \
   -o speech.wav

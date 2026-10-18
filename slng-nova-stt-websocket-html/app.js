@@ -2,6 +2,7 @@ const connectBtn = document.getElementById("connectBtn");
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const apiKeyInput = document.getElementById("apiKeyInput");
+const projectIdInput = document.getElementById("projectIdInput");
 const wsUrlInput = document.getElementById("wsUrlInput");
 const proxyModeInput = document.getElementById("proxyMode");
 const proxyUrlInput = document.getElementById("proxyUrlInput");
@@ -518,6 +519,7 @@ function connectSocket() {
     pendingAutoStart = null;
   }
   const apiKey = apiKeyInput.value.trim();
+  const projectId = projectIdInput.value.trim();
   const useProxy = proxyModeInput.checked;
 
   if (!apiKey) {
@@ -558,7 +560,7 @@ function connectSocket() {
     appendLog("WebSocket open. Sending init.");
     if (useProxy) {
       const target = buildWsUrl();
-      const envelope = JSON.stringify({ api_key: apiKey, target });
+      const envelope = JSON.stringify({ api_key: apiKey, project_id: projectId || undefined, target });
       socket.send(envelope);
     }
     const initMessage = buildInitMessage();
@@ -594,12 +596,13 @@ function connectSocket() {
     appendLog("Binary message received.");
   });
 
-  socket.addEventListener("close", () => {
-    appendLog("WebSocket closed.");
+  socket.addEventListener("close", (event) => {
+    const detail = event.reason ? ` ${event.code}: ${event.reason}` : "";
+    appendLog(`WebSocket closed.${detail}`);
     if (isRecording) {
       stopRecording();
     }
-    setStatus("Disconnected.");
+    setStatus(`Disconnected.${detail}`, Boolean(event.reason));
     pendingAutoStart = null;
     closeSocket();
   });

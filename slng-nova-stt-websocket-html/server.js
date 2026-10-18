@@ -12,6 +12,10 @@ app.use("/*", serveStatic({ root: __dirname }));
 const server = serve({ fetch: app.fetch, port: PORT });
 const wss = new WebSocketServer({ server });
 
+// Sent upstream as X-SLNG-Project-Id. Only checks that the value is safe in a header;
+// the SLNG gateway validates the project UUID itself.
+const PROJECT_ID_RE = /^[\x20-\x7e]{1,128}$/;
+
 function closeSocket(socket, code, reason) {
   if (socket.readyState === WebSocket.OPEN) {
     socket.close(code, reason);
@@ -31,10 +35,11 @@ wss.on("connection", (client) => {
     }
   }
 
-  function connectUpstream(target, apiKey) {
+  function connectUpstream(target, apiKey, projectId) {
     upstream = new WebSocket(target, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
+        ...(projectId ? { "X-SLNG-Project-Id": projectId } : {}),
       },
     });
 
@@ -75,13 +80,18 @@ wss.on("connection", (client) => {
 
       const apiKey = envelope.api_key || envelope.apiKey;
       const target = envelope.target;
+      const projectId = envelope.project_id;
       if (!apiKey || !target) {
         closeSocket(client, 1008, "Missing api_key or target");
         return;
       }
+      if (projectId !== undefined && (typeof projectId !== "string" || !PROJECT_ID_RE.test(projectId))) {
+        closeSocket(client, 1008, "Invalid project_id");
+        return;
+      }
 
       initialized = true;
-      connectUpstream(target, apiKey);
+      connectUpstream(target, apiKey, projectId);
 
       if (envelope.payload) {
         pending.push({ data: envelope.payload, isBinary: false });

@@ -30,6 +30,10 @@ npm run dev
 
 4. Paste your [SLNG API key](https://slng.ai) and start experimenting with emotions!
 
+### Project ID (optional)
+
+SLNG API keys belong to your organization. The **Project ID** field under Settings picks the project that requests are billed and limited under: the demo sends it as the `X-SLNG-Project-Id` header. Copy the project UUID from the project's Settings page in the [dashboard](https://app.slng.ai). To prefill the field, copy `.env.example` to `.env.local` and set `SLNG_PROJECT_ID`. Leave it empty to use the key's default project.
+
 ## How It Works
 
 This demo uses the SLNG Orpheus TTS API to generate speech with emotional expression:
@@ -37,6 +41,7 @@ This demo uses the SLNG Orpheus TTS API to generate speech with emotional expres
 ```bash
 curl "https://api.slng.ai/v1/tts/slng/canopylabs/orpheus:en" \
   -H "Authorization: Bearer $SLNG_API_KEY" \
+  -H "X-SLNG-Project-Id: $SLNG_PROJECT_ID" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "I am so excited to meet you!",

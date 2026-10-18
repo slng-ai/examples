@@ -86,6 +86,7 @@ export default function Home() {
 
   // -- Shared state --
   const [apiKey, setApiKey] = useState("");
+  const [projectId, setProjectId] = useState(process.env.SLNG_PROJECT_ID ?? "");
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [language, setLanguage] = useState("en");
   const [status, setStatus] = useState("Enter your API key and connect.");
@@ -436,6 +437,7 @@ export default function Home() {
       connect({
         wsUrl: finalWsUrl,
         apiKey: apiKey.trim(),
+        projectId: projectId.trim(),
         useProxy,
         proxyUrl: proxyUrl.trim(),
         initMessage,
@@ -462,6 +464,7 @@ export default function Home() {
     closeAudio,
     disconnect,
     apiKey,
+    projectId,
     wsUrl,
     useProxy,
     proxyUrl,
@@ -639,6 +642,8 @@ export default function Home() {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey.trim()}`,
+          // Picks the project the request is billed under. Sent only when set.
+          ...(projectId.trim() ? { "X-SLNG-Project-Id": projectId.trim() } : {}),
         },
         body: formData,
         signal: restAbortControllerRef.current.signal,
@@ -679,7 +684,7 @@ export default function Home() {
       setIsBusy(false);
       restAbortControllerRef.current = null;
     }
-  }, [selectedFile, apiKey, model, appendLog, setStatusMessage]);
+  }, [selectedFile, apiKey, projectId, model, appendLog, setStatusMessage]);
 
   // -- Action button handler --
   const handleAction = useCallback(() => {
@@ -730,7 +735,7 @@ export default function Home() {
 
   const curlPreview = useMemo(() => {
     const url = HTTP_BASE_URL + model;
-    return `curl "${url}" \\\n  -H "Authorization: Bearer $SLNG_API_KEY" \\\n  -F "audio=@recording.wav"`;
+    return `curl "${url}" \\\n  -H "Authorization: Bearer $SLNG_API_KEY" \\\n  -H "X-SLNG-Project-Id: $SLNG_PROJECT_ID" \\\n  -F "audio=@recording.wav"`;
   }, [model]);
 
   return (
@@ -907,6 +912,22 @@ export default function Home() {
               onChange={(e) => setApiKey(e.target.value)}
             />
           </div>
+          <div className="flex-1 basis-[240px]">
+            <FieldLabel
+              htmlFor="projectIdInput"
+              linkHref="https://app.slng.ai"
+              linkText="Find project ID →"
+            >
+              Project ID (optional)
+            </FieldLabel>
+            <Input
+              id="projectIdInput"
+              placeholder="Project UUID, sent as X-SLNG-Project-Id"
+              autoComplete="off"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+            />
+          </div>
           <div className="flex shrink-0 gap-2">
             {isWs && (
               <Button type="button" variant="secondary" onClick={handleConnect}>
@@ -983,6 +1004,7 @@ export default function Home() {
                   language="javascript"
                   code={`const MODEL = "${model}";
 const API_KEY = "YOUR_API_KEY";
+const PROJECT_ID = "YOUR_PROJECT_ID"; // project UUID from the dashboard
 
 const formData = new FormData();
 formData.append("audio", audioFile);
@@ -993,6 +1015,7 @@ const res = await fetch(
     method: "POST",
     headers: {
       "Authorization": "Bearer " + API_KEY,
+      "X-SLNG-Project-Id": PROJECT_ID,
     },
     body: formData,
   }

@@ -36,10 +36,16 @@ npm run dev
 
 Open http://localhost:8787 to use the demo.
 
+SLNG API keys belong to your organization. The optional **Project ID** field picks the project that
+requests are billed and limited under. The proxy sends it upstream as the `X-SLNG-Project-Id`
+header. Copy the project UUID from the project's Settings page in the
+[dashboard](https://app.slng.ai), or leave it empty to use the key's default project.
+
 ## Proxy (Recommended)
 
 Browsers cannot set custom headers on WebSocket connections. The included Node
-proxy adds the `Authorization: Bearer <key>` header when connecting upstream.
+proxy adds the `Authorization: Bearer <key>` header (and `X-SLNG-Project-Id` when set) when
+connecting upstream.
 
 In the UI:
 
@@ -48,7 +54,8 @@ In the UI:
 3. Use `ws://localhost:8787` for the proxy URL (or update if you change ports).
 
 If you run in an environment that supports custom WS headers, you can uncheck
-"Use proxy" and connect directly.
+"Use proxy" and connect directly. Browsers ignore those headers, so in a browser
+the Project ID is sent only through the proxy.
 
 ## API Call (What the App Sends)
 
