@@ -2,6 +2,7 @@ const connectBtn = document.getElementById("connectBtn");
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const apiKeyInput = document.getElementById("apiKeyInput");
+const projectIdInput = document.getElementById("projectIdInput");
 const wsUrlInput = document.getElementById("wsUrlInput");
 const proxyModeInput = document.getElementById("proxyMode");
 const proxyUrlInput = document.getElementById("proxyUrlInput");
@@ -279,8 +280,13 @@ function handleJsonMessage(payload) {
   }
 }
 
-function createWebSocket(url, apiKey) {
-  const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : null;
+function createWebSocket(url, apiKey, projectId) {
+  const headers = apiKey
+    ? {
+        Authorization: `Bearer ${apiKey}`,
+        ...(projectId ? { "X-SLNG-Project-Id": projectId } : {}),
+      }
+    : null;
   if (!headers) {
     return new WebSocket(url);
   }
@@ -518,6 +524,7 @@ function connectSocket() {
     pendingAutoStart = null;
   }
   const apiKey = apiKeyInput.value.trim();
+  const projectId = projectIdInput.value.trim();
   const useProxy = proxyModeInput.checked;
 
   if (!apiKey) {
@@ -550,7 +557,7 @@ function connectSocket() {
   appendLog(`Connecting to ${wsUrl}`);
   resetTranscript();
 
-  socket = useProxy ? new WebSocket(wsUrl) : createWebSocket(wsUrl, apiKey);
+  socket = useProxy ? new WebSocket(wsUrl) : createWebSocket(wsUrl, apiKey, projectId);
   isConnected = true;
   updateButtons();
 
@@ -558,7 +565,7 @@ function connectSocket() {
     appendLog("WebSocket open. Sending init.");
     if (useProxy) {
       const target = buildWsUrl();
-      const envelope = JSON.stringify({ api_key: apiKey, target });
+      const envelope = JSON.stringify({ api_key: apiKey, project_id: projectId || undefined, target });
       socket.send(envelope);
     }
     const initMessage = buildInitMessage();

@@ -27,11 +27,12 @@ export function useWebSocket(callbacks: WsCallbacks) {
     (options: {
       wsUrl: string;
       apiKey: string;
+      projectId: string;
       useProxy: boolean;
       proxyUrl: string;
       initMessage: string;
     }) => {
-      const { wsUrl, apiKey, useProxy, proxyUrl, initMessage } = options;
+      const { wsUrl, apiKey, projectId, useProxy, proxyUrl, initMessage } = options;
       const targetUrl = useProxy ? proxyUrl : wsUrl;
 
       callbacksRef.current.onLog(`Connecting to ${targetUrl}`);
@@ -51,6 +52,7 @@ export function useWebSocket(callbacks: WsCallbacks) {
         if (useProxy) {
           const envelope = JSON.stringify({
             api_key: apiKey,
+            project_id: projectId || undefined,
             target: wsUrl,
             payload: hasInit ? initMessage : undefined,
           });

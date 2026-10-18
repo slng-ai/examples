@@ -91,6 +91,7 @@ export default function Home() {
     "The octopus has three hearts, nine brains, and blue blood. Two of its hearts pump blood to the gills, while the third pumps it to the rest of the body. When an octopus swims, the heart that delivers blood to the body actually stops beating, which is why these creatures prefer crawling to swimming — it's less exhausting."
   );
   const [apiKey, setApiKey] = useState("");
+  const [projectId, setProjectId] = useState(process.env.SLNG_PROJECT_ID ?? "");
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [voice, setVoice] = useState(DEFAULT_VOICE);
   const [status, setStatus] = useState("Enter your API key and press Say it.");
@@ -422,6 +423,7 @@ export default function Home() {
       connect({
         wsUrl: wsUrl.trim(),
         apiKey: apiKey.trim(),
+        projectId: projectId.trim(),
         useProxy,
         proxyUrl: proxyUrl.trim(),
         initMessage,
@@ -444,6 +446,7 @@ export default function Home() {
     disconnect,
     closeAudio,
     apiKey,
+    projectId,
     wsUrl,
     useProxy,
     proxyUrl,
@@ -549,6 +552,8 @@ export default function Home() {
         headers: {
           Authorization: `Bearer ${apiKey.trim()}`,
           "Content-Type": "application/json",
+          // Picks the project the request is billed under. Sent only when set.
+          ...(projectId.trim() ? { "X-SLNG-Project-Id": projectId.trim() } : {}),
         },
         body: JSON.stringify(body),
         signal: restAbortControllerRef.current.signal,
@@ -589,7 +594,7 @@ export default function Home() {
       setIsBusy(false);
       restAbortControllerRef.current = null;
     }
-  }, [apiKey, text, model, voice, appendLog, setStatusMessage]);
+  }, [apiKey, projectId, text, model, voice, appendLog, setStatusMessage]);
 
   // ── Send button handler ──
   const handleSend = useCallback(() => {
@@ -626,7 +631,7 @@ export default function Home() {
 
   const curlPreview = useMemo(() => {
     const url = REST_BASE_URL + model;
-    return `curl "${url}" \\\n  -H "Authorization: Bearer $SLNG_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(restPayload)}' \\\n  --output speech.wav`;
+    return `curl "${url}" \\\n  -H "Authorization: Bearer $SLNG_API_KEY" \\\n  -H "X-SLNG-Project-Id: $SLNG_PROJECT_ID" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(restPayload)}' \\\n  --output speech.wav`;
   }, [model, restPayload]);
 
   return (
@@ -766,6 +771,22 @@ export default function Home() {
               onChange={(e) => setApiKey(e.target.value)}
             />
           </div>
+          <div className="flex-1 basis-[240px]">
+            <FieldLabel
+              htmlFor="projectIdInput"
+              linkHref="https://app.slng.ai"
+              linkText="Find project ID →"
+            >
+              Project ID (optional)
+            </FieldLabel>
+            <Input
+              id="projectIdInput"
+              placeholder="Project UUID, sent as X-SLNG-Project-Id"
+              autoComplete="off"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+            />
+          </div>
           <div className="flex shrink-0 gap-2">
             {isWs && (
               <Button type="button" variant="secondary" onClick={handleConnect}>
@@ -833,6 +854,7 @@ export default function Home() {
                   code={`const MODEL = "${model}";
 const VOICE = "${voice}";
 const API_KEY = "YOUR_API_KEY";
+const PROJECT_ID = "YOUR_PROJECT_ID";
 
 const res = await fetch(
   "${REST_BASE_URL}" + MODEL,
@@ -840,6 +862,7 @@ const res = await fetch(
     method: "POST",
     headers: {
       "Authorization": "Bearer " + API_KEY,
+      "X-SLNG-Project-Id": PROJECT_ID,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

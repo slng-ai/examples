@@ -66,6 +66,7 @@ const emotiveTags = [
 export default function Home() {
   const [text, setText] = useState("Hello! I'm so excited to meet you. This is going to be amazing!");
   const [apiKey, setApiKey] = useState("");
+  const [projectId, setProjectId] = useState(process.env.SLNG_PROJECT_ID ?? "");
   const [baseUrl, setBaseUrl] = useState("https://api.slng.ai");
   const [emotion, setEmotion] = useState("");
   const [voice, setVoice] = useState("tara");
@@ -240,6 +241,8 @@ export default function Home() {
           Authorization: `Bearer ${apiKey.trim()}`,  // Your SLNG API key
           Accept: "text/event-stream",                // Request SSE streaming
           "Content-Type": "application/json",
+          // Picks the project the request is billed under. Sent only when set.
+          ...(projectId.trim() ? { "X-SLNG-Project-Id": projectId.trim() } : {}),
         },
         body: JSON.stringify(body),
       });
@@ -297,7 +300,7 @@ export default function Home() {
   if (emotion) inspectPayload.emotion = emotion;
   const speedVal = parseFloat(speed);
   if (!isNaN(speedVal) && speedVal !== 1.0) inspectPayload.speed = speedVal;
-  const curlPreview = `curl "${inspectEndpoint}" \\\n  -H "Authorization: Bearer $SLNG_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(inspectPayload)}' \\\n  -o output_audio.wav`;
+  const curlPreview = `curl "${inspectEndpoint}" \\\n  -H "Authorization: Bearer $SLNG_API_KEY" \\\n  -H "X-SLNG-Project-Id: $SLNG_PROJECT_ID" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(inspectPayload)}' \\\n  -o output_audio.wav`;
 
   return (
     <div className="page">
@@ -454,6 +457,16 @@ export default function Home() {
             type="text"
             value={baseUrl}
             onChange={(event) => setBaseUrl(event.target.value)}
+          />
+
+          <label htmlFor="projectIdInput">Project ID (optional)</label>
+          <input
+            id="projectIdInput"
+            type="text"
+            placeholder="Project UUID, sent as X-SLNG-Project-Id"
+            autoComplete="off"
+            value={projectId}
+            onChange={(event) => setProjectId(event.target.value)}
           />
 
           <label htmlFor="speedInput">Speed (0.5 - 2.0)</label>

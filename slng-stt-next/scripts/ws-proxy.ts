@@ -14,6 +14,9 @@ function isValidCloseCode(code: number): boolean {
   return false;
 }
 
+// Project UUID sent as X-SLNG-Project-Id. Checked here so a bad value cannot break the header.
+const PROJECT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function closeSocket(socket: WebSocket, code: number, reason: string) {
   if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
     const safeCode = isValidCloseCode(code) ? code : 1011;
@@ -34,11 +37,12 @@ wss.on("connection", (client) => {
     }
   }
 
-  function connectUpstream(target: string, apiKey: string) {
+  function connectUpstream(target: string, apiKey: string, projectId?: string) {
     console.log(`[proxy] upstream connect → ${target}`);
     upstream = new WebSocket(target, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
+        ...(projectId ? { "X-SLNG-Project-Id": projectId } : {}),
       },
     });
 
@@ -84,8 +88,13 @@ wss.on("connection", (client) => {
         return;
       }
 
-      let envelope: { api_key?: string; apiKey?: string; target?: string; payload?: string } | null =
-        null;
+      let envelope: {
+        api_key?: string;
+        apiKey?: string;
+        project_id?: unknown;
+        target?: string;
+        payload?: string;
+      } | null = null;
       try {
         envelope = JSON.parse(data.toString());
       } catch {
@@ -95,13 +104,18 @@ wss.on("connection", (client) => {
 
       const apiKey = envelope?.api_key || envelope?.apiKey;
       const target = envelope?.target;
+      const projectId = envelope?.project_id;
       if (!apiKey || !target) {
         closeSocket(client, 1008, "Missing api_key or target");
         return;
       }
+      if (projectId !== undefined && (typeof projectId !== "string" || !PROJECT_ID_RE.test(projectId))) {
+        closeSocket(client, 1008, "Invalid project_id");
+        return;
+      }
 
       initialized = true;
-      connectUpstream(target, apiKey);
+      connectUpstream(target, apiKey, projectId);
 
       if (envelope?.payload) {
         pending.push({ data: envelope.payload, isBinary: false });
