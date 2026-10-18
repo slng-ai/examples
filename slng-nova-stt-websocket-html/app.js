@@ -601,8 +601,8 @@ function connectSocket() {
     appendLog("Binary message received.");
   });
 
-  socket.addEventListener("close", () => {
-    appendLog("WebSocket closed.");
+  socket.addEventListener("close", (event) => {
+    appendLog(`WebSocket closed (${event.code}${event.reason ? `: ${event.reason}` : ""}).`);
     if (isRecording) {
       stopRecording();
     }

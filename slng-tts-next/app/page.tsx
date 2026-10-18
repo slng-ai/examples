@@ -854,7 +854,7 @@ export default function Home() {
                   code={`const MODEL = "${model}";
 const VOICE = "${voice}";
 const API_KEY = "YOUR_API_KEY";
-const PROJECT_ID = "YOUR_PROJECT_ID";
+const PROJECT_ID = "YOUR_PROJECT_ID"; // project UUID from the dashboard
 
 const res = await fetch(
   "${REST_BASE_URL}" + MODEL,

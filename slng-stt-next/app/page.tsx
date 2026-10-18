@@ -1004,7 +1004,7 @@ export default function Home() {
                   language="javascript"
                   code={`const MODEL = "${model}";
 const API_KEY = "YOUR_API_KEY";
-const PROJECT_ID = "YOUR_PROJECT_ID";
+const PROJECT_ID = "YOUR_PROJECT_ID"; // project UUID from the dashboard
 
 const formData = new FormData();
 formData.append("audio", audioFile);

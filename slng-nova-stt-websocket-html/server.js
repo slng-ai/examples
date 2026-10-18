@@ -12,8 +12,9 @@ app.use("/*", serveStatic({ root: __dirname }));
 const server = serve({ fetch: app.fetch, port: PORT });
 const wss = new WebSocketServer({ server });
 
-// Project UUID sent as X-SLNG-Project-Id. Checked here so a bad value cannot break the header.
-const PROJECT_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Sent upstream as X-SLNG-Project-Id. Only checks that the value is safe in a header;
+// the SLNG gateway validates the project UUID itself.
+const PROJECT_ID_RE = /^[\x20-\x7e]{1,128}$/;
 
 function closeSocket(socket, code, reason) {
   if (socket.readyState === WebSocket.OPEN) {
